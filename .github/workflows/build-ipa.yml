@@ -15,20 +15,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Xcode build
+           - name: Download Xcode build
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p input
 
-          gh release download xcode-build \
-            --pattern "IPA(2).rar" \
+          echo "===== RELEASES ====="
+          gh release list
+
+          echo "===== DOWNLOAD RAR ====="
+          gh release download \
+            --pattern "*.rar" \
             --dir input
 
           echo "===== DOWNLOADED ====="
-          ls -lh input
+          ls -lah input
 
-      - name: Install RAR extractor
+            - name: Install RAR extractor
         run: |
           brew install sevenzip
 
@@ -36,13 +40,19 @@ jobs:
         run: |
           mkdir -p xcode-source
 
-          7zz x "input/IPA(2).rar" \
-            -oxcode-source \
-            -y
+          RAR_FILE=$(find input -maxdepth 1 -type f -iname "*.rar" | head -1)
+
+          echo "RAR_FILE=$RAR_FILE"
+
+          if [ -z "$RAR_FILE" ]; then
+            echo "ERROR: No RAR file downloaded"
+            exit 1
+          fi
+
+          7zz x "$RAR_FILE" -oxcode-source -y
 
           echo "===== EXTRACTED ====="
           find xcode-source -maxdepth 3 -type d | head -100
-
       - name: Find Unity Xcode project
         id: findproject
         shell: bash
