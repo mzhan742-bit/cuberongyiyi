@@ -9,137 +9,433 @@ permissions:
 jobs:
   build:
     name: Build CBR YiYi IPA
-    runs-on: macos-latest
+    runs-on: macos-15
 
     steps:
+      # =========================================================
+      # 1. CHECKOUT REPOSITORY
+      # =========================================================
       - name: Checkout
         uses: actions/checkout@v4
 
-           - name: Download Xcode build
+      # =========================================================
+      # 2. KIEM TRA RELEASE VA TAI FILE XCODE .RAR
+      # =========================================================
+      - name: Download Xcode build from latest Release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p input
+          set -e
 
-          echo "===== RELEASES ====="
-          gh release list
+          echo "========================================="
+          echo "LIST RELEASES"
+          echo "========================================="
 
-          echo "===== DOWNLOAD RAR ====="
-          gh release download \
-            --pattern "*.rar" \
-            --dir input
+          gh release list --limit 20
 
-          echo "===== DOWNLOADED ====="
-          ls -lah input
+          TAG=$(gh release list \
+            --limit 20 \
+            --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft == false)][0].tagName')
 
-            - name: Install RAR extractor
-        run: |
-          brew install sevenzip
-
-      - name: Extract Unity Xcode project
-        run: |
-          mkdir -p xcode-source
-
-          RAR_FILE=$(find input -maxdepth 1 -type f -iname "*.rar" | head -1)
-
-          echo "RAR_FILE=$RAR_FILE"
-
-          if [ -z "$RAR_FILE" ]; then
-            echo "ERROR: No RAR file downloaded"
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "ERROR: Khong tim thay Release da Publish."
+            echo "Hay vao Code -> Releases -> Create a new release"
+            echo "va upload file Xcode .rar."
             exit 1
           fi
 
-          7zz x "$RAR_FILE" -oxcode-source -y
+          echo ""
+          echo "Release duoc chon: $TAG"
 
-          echo "===== EXTRACTED ====="
-          find xcode-source -maxdepth 3 -type d | head -100
-      - name: Find Unity Xcode project
-        id: findproject
+          mkdir -p "$GITHUB_WORKSPACE/input"
+
+          echo ""
+          echo "========================================="
+          echo "DOWNLOAD RELEASE ASSETS"
+          echo "========================================="
+
+          gh release download "$TAG" \
+            --dir "$GITHUB_WORKSPACE/input"
+
+          echo ""
+          echo "========================================="
+          echo "FILES DOWNLOADED"
+          echo "========================================="
+
+          ls -lah "$GITHUB_WORKSPACE/input"
+
+          RAR_FILE=$(find "$GITHUB_WORKSPACE/input" \
+            -maxdepth 1 \
+            -type f \
+            -iname "*.rar" \
+            | head -1)
+
+          if [ -z "$RAR_FILE" ]; then
+            echo ""
+            echo "ERROR: Release $TAG khong co file .rar"
+            echo ""
+            echo "Cac file hien co:"
+            find "$GITHUB_WORKSPACE/input" \
+              -maxdepth 1 \
+              -type f \
+              -print
+            exit 1
+          fi
+
+          echo ""
+          echo "RAR FILE:"
+          echo "$RAR_FILE"
+
+          echo "RAR_FILE=$RAR_FILE" >> "$GITHUB_ENV"
+
+      # =========================================================
+      # 3. CAI 7ZIP DE GIAI NEN RAR
+      # =========================================================
+      - name: Install RAR extractor
         shell: bash
         run: |
-          PROJECT=$(find "$GITHUB_WORKSPACE/xcode-source" \
-            -name "Unity-iPhone.xcodeproj" \
+          set -e
+
+          echo "========================================="
+          echo "INSTALL 7ZIP"
+          echo "========================================="
+
+          if command -v 7zz >/dev/null 2>&1; then
+            echo "7zz da co san."
+            7zz --help | head -5
+          else
+            brew install sevenzip
+          fi
+
+      # =========================================================
+      # 4. GIAI NEN XCODE PROJECT
+      # =========================================================
+      - name: Extract Unity Xcode project
+        shell: bash
+        run: |
+          set -e
+
+          echo "========================================="
+          echo "EXTRACT XCODE PROJECT"
+          echo "========================================="
+
+          mkdir -p "$GITHUB_WORKSPACE/xcode-source"
+
+          7zz x "$RAR_FILE" \
+            "-o$GITHUB_WORKSPACE/xcode-source" \
+            -y
+
+          echo ""
+          echo "========================================="
+          echo "EXTRACTED CONTENT"
+          echo "========================================="
+
+          find "$GITHUB_WORKSPACE/xcode-source" \
+            -maxdepth 4 \
             -type d \
+            | head -150
+
+      # =========================================================
+      # 5. TIM UNITY-IPHONE.XCODEPROJ
+      # =========================================================
+      - name: Find Unity Xcode project
+        shell: bash
+        run: |
+          set -e
+
+          echo "========================================="
+          echo "FIND UNITY XCODE PROJECT"
+          echo "========================================="
+
+          PROJECT=$(find "$GITHUB_WORKSPACE/xcode-source" \
+            -type d \
+            -name "Unity-iPhone.xcodeproj" \
             | head -1)
 
           if [ -z "$PROJECT" ]; then
-            echo "Unity-iPhone.xcodeproj not found"
+            echo "ERROR: Khong tim thay Unity-iPhone.xcodeproj"
+            echo ""
+            echo "Noi dung sau giai nen:"
+            find "$GITHUB_WORKSPACE/xcode-source" \
+              -maxdepth 5 \
+              -print \
+              | head -300
             exit 1
           fi
 
-          echo "Found project:"
+          PROJECT_DIR=$(dirname "$PROJECT")
+
+          echo ""
+          echo "FOUND PROJECT:"
           echo "$PROJECT"
 
-          echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
+          echo ""
+          echo "PROJECT DIRECTORY:"
+          echo "$PROJECT_DIR"
 
+          echo "PROJECT_PATH=$PROJECT" >> "$GITHUB_ENV"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      # =========================================================
+      # 6. HIEN THI PHIEN BAN XCODE
+      # =========================================================
       - name: Show Xcode version
-        run: |
-          xcodebuild -version
-
-      - name: Check schemes
-        run: |
-          xcodebuild \
-            -project "${{ steps.findproject.outputs.project }}" \
-            -list
-
-      - name: Build Unity iOS App
-        run: |
-          xcodebuild \
-            -project "${{ steps.findproject.outputs.project }}" \
-            -scheme Unity-iPhone \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination "generic/platform=iOS" \
-            -derivedDataPath "$GITHUB_WORKSPACE/build" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            build
-
-      - name: Find built app
-        run: |
-          echo "===== BUILT APPS ====="
-
-          find "$GITHUB_WORKSPACE/build" \
-            -type d \
-            -name "*.app"
-
-      - name: Create IPA
         shell: bash
         run: |
-          APP=$(find "$GITHUB_WORKSPACE/build/Build/Products" \
+          echo "========================================="
+          echo "XCODE VERSION"
+          echo "========================================="
+
+          xcodebuild -version
+
+          echo ""
+          echo "SDK:"
+          xcodebuild -showsdks
+
+      # =========================================================
+      # 7. KIEM TRA CO PODFILE KHONG
+      # =========================================================
+      - name: Check CocoaPods
+        shell: bash
+        run: |
+          set -e
+
+          echo "========================================="
+          echo "CHECK COCOAPODS"
+          echo "========================================="
+
+          cd "$PROJECT_DIR"
+
+          if [ -f "Podfile" ]; then
+            echo "Tim thay Podfile."
+
+            if ! command -v pod >/dev/null 2>&1; then
+              echo "Dang cai CocoaPods..."
+              sudo gem install cocoapods
+            fi
+
+            echo "Dang chay pod install..."
+            pod install
+
+          else
+            echo "Project khong co Podfile."
+            echo "Bo qua CocoaPods."
+          fi
+
+      # =========================================================
+      # 8. KIEM TRA WORKSPACE / PROJECT
+      # =========================================================
+      - name: Detect Xcode workspace
+        shell: bash
+        run: |
+          set -e
+
+          WORKSPACE=$(find "$PROJECT_DIR" \
+            -maxdepth 1 \
+            -type d \
+            -name "*.xcworkspace" \
+            | head -1)
+
+          if [ -n "$WORKSPACE" ]; then
+            echo "Tim thay workspace:"
+            echo "$WORKSPACE"
+
+            echo "XCODE_MODE=workspace" >> "$GITHUB_ENV"
+            echo "XCODE_PATH=$WORKSPACE" >> "$GITHUB_ENV"
+          else
+            echo "Khong co workspace."
+            echo "Su dung Unity-iPhone.xcodeproj."
+
+            echo "XCODE_MODE=project" >> "$GITHUB_ENV"
+            echo "XCODE_PATH=$PROJECT_PATH" >> "$GITHUB_ENV"
+          fi
+
+      # =========================================================
+      # 9. KIEM TRA SCHEME
+      # =========================================================
+      - name: Check Xcode schemes
+        shell: bash
+        run: |
+          set -e
+
+          echo "========================================="
+          echo "XCODE SCHEMES"
+          echo "========================================="
+
+          if [ "$XCODE_MODE" = "workspace" ]; then
+
+            xcodebuild \
+              -workspace "$XCODE_PATH" \
+              -list
+
+          else
+
+            xcodebuild \
+              -project "$XCODE_PATH" \
+              -list
+
+          fi
+
+      # =========================================================
+      # 10. BUILD UNITY IOS APP
+      # =========================================================
+      - name: Build Unity iOS App
+        shell: bash
+        run: |
+          set -o pipefail
+
+          echo "========================================="
+          echo "BUILD UNITY IOS"
+          echo "========================================="
+
+          mkdir -p "$GITHUB_WORKSPACE/build"
+
+          if [ "$XCODE_MODE" = "workspace" ]; then
+
+            xcodebuild \
+              -workspace "$XCODE_PATH" \
+              -scheme Unity-iPhone \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination "generic/platform=iOS" \
+              -derivedDataPath "$GITHUB_WORKSPACE/build" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              DEVELOPMENT_TEAM="" \
+              build \
+              2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
+
+          else
+
+            xcodebuild \
+              -project "$XCODE_PATH" \
+              -scheme Unity-iPhone \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination "generic/platform=iOS" \
+              -derivedDataPath "$GITHUB_WORKSPACE/build" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              DEVELOPMENT_TEAM="" \
+              build \
+              2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
+
+          fi
+
+      # =========================================================
+      # 11. TIM FILE .APP
+      # =========================================================
+      - name: Find built app
+        shell: bash
+        run: |
+          set -e
+
+          echo "========================================="
+          echo "SEARCH BUILT APP"
+          echo "========================================="
+
+          find "$GITHUB_WORKSPACE/build/Build/Products" \
             -type d \
             -name "*.app" \
-            | grep "Release-iphoneos" \
+            -print
+
+          APP=$(find "$GITHUB_WORKSPACE/build/Build/Products/Release-iphoneos" \
+            -maxdepth 1 \
+            -type d \
+            -name "*.app" \
             | head -1)
 
           if [ -z "$APP" ]; then
-            echo "ERROR: .app not found"
+            echo ""
+            echo "ERROR: Khong tim thay file .app"
             exit 1
           fi
 
-          echo "Found APP:"
+          echo ""
+          echo "FOUND APP:"
           echo "$APP"
 
-          mkdir -p "$GITHUB_WORKSPACE/ipa/Payload"
+          echo "APP_PATH=$APP" >> "$GITHUB_ENV"
 
-          cp -R "$APP" \
-            "$GITHUB_WORKSPACE/ipa/Payload/"
-
-          cd "$GITHUB_WORKSPACE/ipa"
-
-          zip -r -9 \
-            "$GITHUB_WORKSPACE/CauBeRongYiYi.ipa" \
-            Payload
-
-      - name: Check IPA
+      # =========================================================
+      # 12. TAO PAYLOAD VA IPA
+      # =========================================================
+      - name: Create IPA
+        shell: bash
         run: |
-          echo "===== IPA ====="
-          ls -lh "$GITHUB_WORKSPACE/CauBeRongYiYi.ipa"
+          set -e
 
+          echo "========================================="
+          echo "CREATE IPA"
+          echo "========================================="
+
+          rm -rf "$GITHUB_WORKSPACE/ipa-output"
+
+          mkdir -p \
+            "$GITHUB_WORKSPACE/ipa-output/Payload"
+
+          cp -R \
+            "$APP_PATH" \
+            "$GITHUB_WORKSPACE/ipa-output/Payload/"
+
+          echo ""
+          echo "Payload:"
+          ls -lah "$GITHUB_WORKSPACE/ipa-output/Payload"
+
+          cd "$GITHUB_WORKSPACE/ipa-output"
+
+          /usr/bin/ditto \
+            -c \
+            -k \
+            --sequesterRsrc \
+            --keepParent \
+            Payload \
+            "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa"
+
+      # =========================================================
+      # 13. KIEM TRA IPA
+      # =========================================================
+      - name: Check IPA
+        shell: bash
+        run: |
+          set -e
+
+          echo "========================================="
+          echo "IPA CREATED SUCCESSFULLY"
+          echo "========================================="
+
+          ls -lh \
+            "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa"
+
+          echo ""
+          echo "IPA CONTENT:"
+          unzip -l \
+            "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa" \
+            | head -50
+
+      # =========================================================
+      # 14. UPLOAD IPA
+      # =========================================================
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CauBeRongYiYi-IPA
-          path: CauBeRongYiYi.ipa
+          name: CauBeRongYiYi-Unsigned-IPA
+          path: CauBeRongYiYi-unsigned.ipa
           if-no-files-found: error
+          retention-days: 7
+
+      # =========================================================
+      # 15. UPLOAD BUILD LOG - LUON CHAY
+      # =========================================================
+      - name: Upload Xcode build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xcode-Build-Log
+          path: xcodebuild.log
+          if-no-files-found: ignore
+          retention-days: 7
