@@ -1,0 +1,135 @@
+name: Build Unity IPA Online
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build CBR YiYi IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Xcode build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p input
+
+          gh release download xcode-build \
+            --pattern "IPA(2).rar" \
+            --dir input
+
+          echo "===== DOWNLOADED ====="
+          ls -lh input
+
+      - name: Install RAR extractor
+        run: |
+          brew install sevenzip
+
+      - name: Extract Unity Xcode project
+        run: |
+          mkdir -p xcode-source
+
+          7zz x "input/IPA(2).rar" \
+            -oxcode-source \
+            -y
+
+          echo "===== EXTRACTED ====="
+          find xcode-source -maxdepth 3 -type d | head -100
+
+      - name: Find Unity Xcode project
+        id: findproject
+        shell: bash
+        run: |
+          PROJECT=$(find "$GITHUB_WORKSPACE/xcode-source" \
+            -name "Unity-iPhone.xcodeproj" \
+            -type d \
+            | head -1)
+
+          if [ -z "$PROJECT" ]; then
+            echo "Unity-iPhone.xcodeproj not found"
+            exit 1
+          fi
+
+          echo "Found project:"
+          echo "$PROJECT"
+
+          echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+
+      - name: Check schemes
+        run: |
+          xcodebuild \
+            -project "${{ steps.findproject.outputs.project }}" \
+            -list
+
+      - name: Build Unity iOS App
+        run: |
+          xcodebuild \
+            -project "${{ steps.findproject.outputs.project }}" \
+            -scheme Unity-iPhone \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$GITHUB_WORKSPACE/build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Find built app
+        run: |
+          echo "===== BUILT APPS ====="
+
+          find "$GITHUB_WORKSPACE/build" \
+            -type d \
+            -name "*.app"
+
+      - name: Create IPA
+        shell: bash
+        run: |
+          APP=$(find "$GITHUB_WORKSPACE/build/Build/Products" \
+            -type d \
+            -name "*.app" \
+            | grep "Release-iphoneos" \
+            | head -1)
+
+          if [ -z "$APP" ]; then
+            echo "ERROR: .app not found"
+            exit 1
+          fi
+
+          echo "Found APP:"
+          echo "$APP"
+
+          mkdir -p "$GITHUB_WORKSPACE/ipa/Payload"
+
+          cp -R "$APP" \
+            "$GITHUB_WORKSPACE/ipa/Payload/"
+
+          cd "$GITHUB_WORKSPACE/ipa"
+
+          zip -r -9 \
+            "$GITHUB_WORKSPACE/CauBeRongYiYi.ipa" \
+            Payload
+
+      - name: Check IPA
+        run: |
+          echo "===== IPA ====="
+          ls -lh "$GITHUB_WORKSPACE/CauBeRongYiYi.ipa"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CauBeRongYiYi-IPA
+          path: CauBeRongYiYi.ipa
+          if-no-files-found: error
