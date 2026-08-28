@@ -24,11 +24,14 @@ jobs:
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/input"
 
-          python3 -m pip install --user --quiet gdown
+          python3 -m venv "$RUNNER_TEMP/gdown-venv"
+          source "$RUNNER_TEMP/gdown-venv/bin/activate"
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet gdown
 
-          python3 -m gdown "https://drive.google.com/uc?id=163cnCDJN_WE84iCbEBYJdrDRdW7Csimk" -O "$GITHUB_WORKSPACE/input/IOS.rar.part01"
-          python3 -m gdown "https://drive.google.com/uc?id=1LworbdLPgvt6CSoKhxLgstGQqcUy1bCX" -O "$GITHUB_WORKSPACE/input/IOS.rar.part02"
-          python3 -m gdown "https://drive.google.com/uc?id=1Oz7-xxoDo2YDFSkoV9OqIUKFGao2olij" -O "$GITHUB_WORKSPACE/input/IOS.rar.part03"
+          python -m gdown "https://drive.google.com/uc?id=163cnCDJN_WE84iCbEBYJdrDRdW7Csimk" -O "$GITHUB_WORKSPACE/input/IOS.rar.part01"
+          python -m gdown "https://drive.google.com/uc?id=1LworbdLPgvt6CSoKhxLgstGQqcUy1bCX" -O "$GITHUB_WORKSPACE/input/IOS.rar.part02"
+          python -m gdown "https://drive.google.com/uc?id=1Oz7-xxoDo2YDFSkoV9OqIUKFGao2olij" -O "$GITHUB_WORKSPACE/input/IOS.rar.part03"
 
           echo "d5623867b1d1aff01e9f9b07caa9a963e8d0972c0c3c06820bc7f846c7d126ad  $GITHUB_WORKSPACE/input/IOS.rar.part01" | shasum -a 256 -c -
           echo "ea6f5d1f19162a56b37dfc837e2fad1631d04ff3f432d6d02bca3cef37d05595  $GITHUB_WORKSPACE/input/IOS.rar.part02" | shasum -a 256 -c -
