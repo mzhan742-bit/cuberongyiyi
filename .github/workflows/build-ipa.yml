@@ -2,6 +2,9 @@ name: Build Unity IPA Online
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/build-ios-trigger.txt'
 
 permissions:
   contents: read
@@ -15,27 +18,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Xcode build
+      - name: Download exact IOS.rar from Drive parts
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
-          gh release list --limit 20
-          LATEST_TAG=$(gh release view --json tagName --jq '.tagName')
-          if [ -z "$LATEST_TAG" ]; then
-            echo "ERROR: Khong tim thay Release."
-            exit 1
-          fi
+          set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/input"
-          gh release download "$LATEST_TAG" --dir "$GITHUB_WORKSPACE/input"
-          ls -lah "$GITHUB_WORKSPACE/input"
-          RAR_FILE=$(find "$GITHUB_WORKSPACE/input" -maxdepth 1 -type f -iname "*.rar" | head -1)
-          if [ -z "$RAR_FILE" ]; then
-            echo "ERROR: Khong tim thay file .rar trong Release."
-            exit 1
-          fi
-          echo "RAR_FILE=$RAR_FILE" >> "$GITHUB_ENV"
+
+          python3 -m pip install --user --quiet gdown
+
+          python3 -m gdown "https://drive.google.com/uc?id=163cnCDJN_WE84iCbEBYJdrDRdW7Csimk" -O "$GITHUB_WORKSPACE/input/IOS.rar.part01"
+          python3 -m gdown "https://drive.google.com/uc?id=1LworbdLPgvt6CSoKhxLgstGQqcUy1bCX" -O "$GITHUB_WORKSPACE/input/IOS.rar.part02"
+          python3 -m gdown "https://drive.google.com/uc?id=1Oz7-xxoDo2YDFSkoV9OqIUKFGao2olij" -O "$GITHUB_WORKSPACE/input/IOS.rar.part03"
+
+          echo "d5623867b1d1aff01e9f9b07caa9a963e8d0972c0c3c06820bc7f846c7d126ad  $GITHUB_WORKSPACE/input/IOS.rar.part01" | shasum -a 256 -c -
+          echo "ea6f5d1f19162a56b37dfc837e2fad1631d04ff3f432d6d02bca3cef37d05595  $GITHUB_WORKSPACE/input/IOS.rar.part02" | shasum -a 256 -c -
+          echo "3bdf5b8248d5a3cab5aa5433d720c79eebf7558aff43d146cad79ffc1b9b27c6  $GITHUB_WORKSPACE/input/IOS.rar.part03" | shasum -a 256 -c -
+
+          cat "$GITHUB_WORKSPACE/input/IOS.rar.part01" \
+              "$GITHUB_WORKSPACE/input/IOS.rar.part02" \
+              "$GITHUB_WORKSPACE/input/IOS.rar.part03" \
+              > "$GITHUB_WORKSPACE/input/IOS.rar"
+
+          echo "99442216a172234fe961524cef96a995969f566912f636369afbcf6cb534ae2a  $GITHUB_WORKSPACE/input/IOS.rar" | shasum -a 256 -c -
+          ls -lh "$GITHUB_WORKSPACE/input/IOS.rar"
+          echo "RAR_FILE=$GITHUB_WORKSPACE/input/IOS.rar" >> "$GITHUB_ENV"
 
       - name: Install RAR extractor
         shell: bash
@@ -59,16 +65,17 @@ jobs:
           PROJECT_PATH=$(find "$GITHUB_WORKSPACE/xcode-source" -type d -name "Unity-iPhone.xcodeproj" | head -1)
           if [ -z "$PROJECT_PATH" ]; then
             echo "ERROR: Khong tim thay Unity-iPhone.xcodeproj"
+            find "$GITHUB_WORKSPACE/xcode-source" -maxdepth 5 -print | head -300
             exit 1
           fi
           PROJECT_DIR=$(dirname "$PROJECT_PATH")
           echo "PROJECT_PATH=$PROJECT_PATH" >> "$GITHUB_ENV"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "PROJECT_PATH=$PROJECT_PATH"
 
       - name: Show Xcode version
         shell: bash
         run: |
-          set -e
           xcodebuild -version
           xcodebuild -showsdks
 
@@ -105,38 +112,29 @@ jobs:
             xcodebuild -project "$XCODE_PATH" -list
           fi
 
-      - name: Build Unity iOS App
+      - name: Build Unity iOS App unsigned
         shell: bash
         run: |
           set -o pipefail
           rm -rf "$GITHUB_WORKSPACE/build"
           mkdir -p "$GITHUB_WORKSPACE/build"
+
+          COMMON_ARGS=(
+            -scheme Unity-iPhone
+            -configuration Release
+            -sdk iphoneos
+            -destination "generic/platform=iOS"
+            -derivedDataPath "$GITHUB_WORKSPACE/build"
+            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGN_IDENTITY=
+            DEVELOPMENT_TEAM=
+          )
+
           if [ "$XCODE_TYPE" = "workspace" ]; then
-            xcodebuild \
-              -workspace "$XCODE_PATH" \
-              -scheme Unity-iPhone \
-              -configuration Release \
-              -sdk iphoneos \
-              -destination "generic/platform=iOS" \
-              -derivedDataPath "$GITHUB_WORKSPACE/build" \
-              CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGN_IDENTITY="" \
-              DEVELOPMENT_TEAM="" \
-              build 2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
+            xcodebuild -workspace "$XCODE_PATH" "${COMMON_ARGS[@]}" build 2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
           else
-            xcodebuild \
-              -project "$XCODE_PATH" \
-              -scheme Unity-iPhone \
-              -configuration Release \
-              -sdk iphoneos \
-              -destination "generic/platform=iOS" \
-              -derivedDataPath "$GITHUB_WORKSPACE/build" \
-              CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGN_IDENTITY="" \
-              DEVELOPMENT_TEAM="" \
-              build 2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
+            xcodebuild -project "$XCODE_PATH" "${COMMON_ARGS[@]}" build 2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
           fi
 
       - name: Find built app
@@ -146,9 +144,11 @@ jobs:
           APP_PATH=$(find "$GITHUB_WORKSPACE/build/Build/Products" -type d -name "*.app" | grep "Release-iphoneos" | head -1)
           if [ -z "$APP_PATH" ]; then
             echo "ERROR: Khong tim thay file .app"
+            find "$GITHUB_WORKSPACE/build" -maxdepth 5 -print | head -300
             exit 1
           fi
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+          echo "APP_PATH=$APP_PATH"
 
       - name: Create Payload
         shell: bash
@@ -157,7 +157,6 @@ jobs:
           rm -rf "$GITHUB_WORKSPACE/ipa-output"
           mkdir -p "$GITHUB_WORKSPACE/ipa-output/Payload"
           cp -R "$APP_PATH" "$GITHUB_WORKSPACE/ipa-output/Payload/"
-          find "$GITHUB_WORKSPACE/ipa-output/Payload" -maxdepth 2 -print | head -100
 
       - name: Create IPA
         shell: bash
@@ -171,12 +170,13 @@ jobs:
         shell: bash
         run: |
           set -e
-          unzip -l "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa" | head -80
           unzip -Z1 "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa" | grep -Eq '^Payload/[^/]+\.app/' || {
             echo "ERROR: IPA khong co cau truc Payload/*.app"
             exit 1
           }
-          echo "IPA structure OK: Payload/*.app"
+          APP_IN_IPA=$(unzip -Z1 "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa" | grep -m1 '^Payload/[^/]*\.app/$' || true)
+          echo "IPA structure OK: $APP_IN_IPA"
+          shasum -a 256 "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
