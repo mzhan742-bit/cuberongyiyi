@@ -1,2 +1,3 @@
 Build IOS(1).rar uploaded 2026-08-29
-Source SHA256: f8dfeac59a9eedc2b9264a6864e05ff5b46305b995ea9a65bf0513f450a0601d
+Verified source SHA256: f8dfeac52148409cbe7e8a1489405059d3a96308b2c8d0ecaa13af825050601d
+Retry: corrected source checksums
