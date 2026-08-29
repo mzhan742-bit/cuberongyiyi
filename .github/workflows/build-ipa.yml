@@ -33,16 +33,16 @@ jobs:
           python -m gdown "https://drive.google.com/uc?id=1LworbdLPgvt6CSoKhxLgstGQqcUy1bCX" -O "$GITHUB_WORKSPACE/input/IOS.rar.part02"
           python -m gdown "https://drive.google.com/uc?id=1Oz7-xxoDo2YDFSkoV9OqIUKFGao2olij" -O "$GITHUB_WORKSPACE/input/IOS.rar.part03"
 
-          echo "d5623867b1d1aff01e9f9b07caa9a963e8d0972c0c3c06820bc7f846c7d126ad  $GITHUB_WORKSPACE/input/IOS.rar.part01" | shasum -a 256 -c -
-          echo "ea6f5d1f19162a56b37dfc837e2fad1631d04ff3f432d6d02bca3cef37d05595  $GITHUB_WORKSPACE/input/IOS.rar.part02" | shasum -a 256 -c -
-          echo "3bdf5b8248d5a3cab5aa5433d720c79eebf7558aff43d146cad79ffc1b9b27c6  $GITHUB_WORKSPACE/input/IOS.rar.part03" | shasum -a 256 -c -
+          echo "229ebf68280739ea4d08dba001203442b8356cebba5c6fac78a8328aee1e77f1  $GITHUB_WORKSPACE/input/IOS.rar.part01" | shasum -a 256 -c -
+          echo "8a97bc68445889285eee2330f7de8ba0ae40239c9245909aa1a3a905669da763  $GITHUB_WORKSPACE/input/IOS.rar.part02" | shasum -a 256 -c -
+          echo "874f46034b7567d36b12bf5069d57e2862cea38f20872788e9bc1c71a7b4364b  $GITHUB_WORKSPACE/input/IOS.rar.part03" | shasum -a 256 -c -
 
           cat "$GITHUB_WORKSPACE/input/IOS.rar.part01" \
               "$GITHUB_WORKSPACE/input/IOS.rar.part02" \
               "$GITHUB_WORKSPACE/input/IOS.rar.part03" \
               > "$GITHUB_WORKSPACE/input/IOS.rar"
 
-          echo "99442216a172234fe961524cef96a995969f566912f636369afbcf6cb534ae2a  $GITHUB_WORKSPACE/input/IOS.rar" | shasum -a 256 -c -
+          echo "f8dfeac59a9eedc2b9264a6864e05ff5b46305b995ea9a65bf0513f450a0601d  $GITHUB_WORKSPACE/input/IOS.rar" | shasum -a 256 -c -
           ls -lh "$GITHUB_WORKSPACE/input/IOS.rar"
           echo "RAR_FILE=$GITHUB_WORKSPACE/input/IOS.rar" >> "$GITHUB_ENV"
 
@@ -74,7 +74,6 @@ jobs:
           PROJECT_DIR=$(dirname "$PROJECT_PATH")
           echo "PROJECT_PATH=$PROJECT_PATH" >> "$GITHUB_ENV"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "PROJECT_PATH=$PROJECT_PATH"
 
       - name: Show Xcode version
         shell: bash
@@ -121,7 +120,6 @@ jobs:
           set -o pipefail
           rm -rf "$GITHUB_WORKSPACE/build"
           mkdir -p "$GITHUB_WORKSPACE/build"
-
           COMMON_ARGS=(
             -scheme Unity-iPhone
             -configuration Release
@@ -133,7 +131,6 @@ jobs:
             CODE_SIGN_IDENTITY=
             DEVELOPMENT_TEAM=
           )
-
           if [ "$XCODE_TYPE" = "workspace" ]; then
             xcodebuild -workspace "$XCODE_PATH" "${COMMON_ARGS[@]}" build 2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
           else
@@ -147,11 +144,9 @@ jobs:
           APP_PATH=$(find "$GITHUB_WORKSPACE/build/Build/Products" -type d -name "*.app" | grep "Release-iphoneos" | head -1)
           if [ -z "$APP_PATH" ]; then
             echo "ERROR: Khong tim thay file .app"
-            find "$GITHUB_WORKSPACE/build" -maxdepth 5 -print | head -300
             exit 1
           fi
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
-          echo "APP_PATH=$APP_PATH"
 
       - name: Create Payload
         shell: bash
@@ -177,8 +172,7 @@ jobs:
             echo "ERROR: IPA khong co cau truc Payload/*.app"
             exit 1
           }
-          APP_IN_IPA=$(unzip -Z1 "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa" | grep -m1 '^Payload/[^/]*\.app/$' || true)
-          echo "IPA structure OK: $APP_IN_IPA"
+          echo "IPA structure OK"
           shasum -a 256 "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned.ipa"
 
       - name: Upload IPA artifact
