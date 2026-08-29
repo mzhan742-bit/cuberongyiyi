@@ -1,2 +1,2 @@
-Build IOS.rar uploaded 2026-08-29
-Retry 2: macOS venv downloader
+Build IOS(1).rar uploaded 2026-08-29
+Source SHA256: f8dfeac59a9eedc2b9264a6864e05ff5b46305b995ea9a65bf0513f450a0601d
