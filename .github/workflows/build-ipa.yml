@@ -33,16 +33,16 @@ jobs:
           python -m gdown "https://drive.google.com/uc?id=1LworbdLPgvt6CSoKhxLgstGQqcUy1bCX" -O "$GITHUB_WORKSPACE/input/IOS.rar.part02"
           python -m gdown "https://drive.google.com/uc?id=1Oz7-xxoDo2YDFSkoV9OqIUKFGao2olij" -O "$GITHUB_WORKSPACE/input/IOS.rar.part03"
 
-          echo "229ebf68280739ea4d08dba001203442b8356cebba5c6fac78a8328aee1e77f1  $GITHUB_WORKSPACE/input/IOS.rar.part01" | shasum -a 256 -c -
-          echo "8a97bc68445889285eee2330f7de8ba0ae40239c9245909aa1a3a905669da763  $GITHUB_WORKSPACE/input/IOS.rar.part02" | shasum -a 256 -c -
-          echo "874f46034b7567d36b12bf5069d57e2862cea38f20872788e9bc1c71a7b4364b  $GITHUB_WORKSPACE/input/IOS.rar.part03" | shasum -a 256 -c -
+          echo "229ebfd1309c9658c86a943816ce8355e22e1527ad09b5d023d7518336b85e85  $GITHUB_WORKSPACE/input/IOS.rar.part01" | shasum -a 256 -c -
+          echo "8a97fa1f877c90cd24ec49711095bbd13abcb37c8f8d6b10cf74da267acc579b  $GITHUB_WORKSPACE/input/IOS.rar.part02" | shasum -a 256 -c -
+          echo "874f07baeb5957e093f372bd42d58e2baefb10ba3a3d98fd450f2886e2967e74  $GITHUB_WORKSPACE/input/IOS.rar.part03" | shasum -a 256 -c -
 
           cat "$GITHUB_WORKSPACE/input/IOS.rar.part01" \
               "$GITHUB_WORKSPACE/input/IOS.rar.part02" \
               "$GITHUB_WORKSPACE/input/IOS.rar.part03" \
               > "$GITHUB_WORKSPACE/input/IOS.rar"
 
-          echo "f8dfeac59a9eedc2b9264a6864e05ff5b46305b995ea9a65bf0513f450a0601d  $GITHUB_WORKSPACE/input/IOS.rar" | shasum -a 256 -c -
+          echo "f8dfeac52148409cbe7e8a1489405059d3a96308b2c8d0ecaa13af825050601d  $GITHUB_WORKSPACE/input/IOS.rar" | shasum -a 256 -c -
           ls -lh "$GITHUB_WORKSPACE/input/IOS.rar"
           echo "RAR_FILE=$GITHUB_WORKSPACE/input/IOS.rar" >> "$GITHUB_ENV"
 
