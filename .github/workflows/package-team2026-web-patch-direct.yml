@@ -1,0 +1,28 @@
+name: Package Team2026 Web Patch Direct
+
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - '.github/workflows/package-team2026-web-patch-direct.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Final PHP lint
+        run: |
+          php -l team2026-patch/htdocs/Controllers/Configs.php
+          php -l team2026-patch/htdocs/Controllers/Team2026Compat.php
+          php -l team2026-patch/htdocs/Controllers/Team2026CompatFix.php
+      - name: Upload direct copy-over patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_WEB_TEAM2026_COPY_DE_YIYI
+          path: |
+            team2026-patch/htdocs
+            team2026-patch/HUONG_DAN.txt
+          retention-days: 7
+          if-no-files-found: error
