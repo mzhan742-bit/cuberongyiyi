@@ -58,6 +58,8 @@ $Connect = connectDatabase($servers[$currentServer]);
 // Tự tạo lớp tương thích schema đúng một lần; không xóa dữ liệu game.
 require_once __DIR__ . '/Team2026Compat.php';
 ensureTeam2026Compatibility($Connect);
+require_once __DIR__ . '/Team2026CompatFix.php';
+ensureTeam2026CompatibilityFix($Connect);
 
 // Chuẩn hóa biến $Settings mà các file Cron ACB/MBBank cũ đang gọi.
 $Settings = [];
