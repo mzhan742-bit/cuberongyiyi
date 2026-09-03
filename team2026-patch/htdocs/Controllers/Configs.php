@@ -8,7 +8,7 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// Load file .env
+// Load file .env hiện có - không ép đổi host/user/password của máy chủ.
 $envFile = __DIR__ . '/.env';
 if (file_exists($envFile)) {
     foreach (file($envFile) as $line) {
@@ -36,26 +36,45 @@ function connectDatabase($config)
     );
 }
 
-// Giữ nguyên host/user/pass và key hiện tại; chỉ chuyển database web sang team2026.
+// Chỉ đổi database web sang team2026. Host/user/pass và key vẫn lấy từ .env hiện tại.
+$serverBase = [
+    'host' => getenv('DB_HOST') ?: 'localhost',
+    'name' => 'team2026',
+    'user' => getenv('DB_USER') ?: 'root',
+    'pass' => getenv('DB_PASS') ?: '',
+    'partner_key' => getenv('PARTNER_KEY_S1') ?: '',
+    'partner_id' => getenv('PARTNER_ID_S1') ?: ''
+];
+
 $servers = [
-    1 => [
-        'host' => getenv('DB_HOST') ?: 'localhost',
-        'name' => 'team2026',
-        'user' => getenv('DB_USER') ?: 'root',
-        'pass' => getenv('DB_PASS') ?: '',
-        'partner_key' => getenv('PARTNER_KEY_S1') ?: '',
-        'partner_id' => getenv('PARTNER_ID_S1') ?: ''
-    ]
+    1 => $serverBase,
+    // Source CronAcb có nhánh S2. Khi chỉ dùng một DB team2026, trỏ S2 về cùng DB để không lỗi undefined server.
+    2 => $serverBase
 ];
 
 $currentServer = 1;
 $Connect = connectDatabase($servers[$currentServer]);
 
-// Tự tạo lớp tương thích schema một lần; không xóa dữ liệu game.
+// Tự tạo lớp tương thích schema đúng một lần; không xóa dữ liệu game.
 require_once __DIR__ . '/Team2026Compat.php';
 ensureTeam2026Compatibility($Connect);
 
-// Config API, Gmail, Domain
+// Chuẩn hóa biến $Settings mà các file Cron ACB/MBBank cũ đang gọi.
+$Settings = [];
+try {
+    $settingStmt = $Connect->query("SELECT * FROM settings LIMIT 1");
+    $Settings = $settingStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    if (!isset($Settings['Username'])) {
+        $Settings['Username'] = $Settings['AccountBank'] ?? '';
+    }
+    if (!isset($Settings['Password'])) {
+        $Settings['Password'] = $Settings['PasswordBank'] ?? '';
+    }
+} catch (Throwable $e) {
+    error_log('[YiYi Settings] ' . $e->getMessage());
+}
+
+// Config API, Gmail, Domain - giữ nguyên cấu trúc source hiện tại.
 const Domain = '160.191.55.0';
 const APP_NAME = 'Ngọc Rồng Lùa Gà';
 const SUPPORT_EMAIL = 'support@example.com';
