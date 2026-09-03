@@ -1,0 +1,118 @@
+name: Build Team2026 Web Patch V2
+
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'team2026-patch/**'
+      - 'team2026-patch-tests/**'
+      - '.github/workflows/build-team2026-web-patch-v2.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint PHP
+        run: |
+          php -l team2026-patch/htdocs/Controllers/Configs.php
+          php -l team2026-patch/htdocs/Controllers/Team2026Compat.php
+          php -l team2026-patch/htdocs/Controllers/Team2026CompatFix.php
+
+      - name: Start MariaDB 10.4
+        run: |
+          docker run -d --name yiyi-db -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 -p 3306:3306 mariadb:10.4
+          for i in {1..60}; do
+            docker exec yiyi-db mariadb-admin ping -uroot --silent && exit 0
+            sleep 2
+          done
+          docker logs yiyi-db
+          exit 1
+
+      - name: Load team2026 schema fixture
+        run: docker exec -i yiyi-db mariadb -uroot < team2026-patch-tests/minimal-team2026.sql
+
+      - name: Enable PDO MySQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y php-mysql
+
+      - name: Integration test
+        run: |
+          cat >/tmp/yiyi-test.php <<'PHP'
+          <?php
+          $pdo = new PDO('mysql:host=127.0.0.1;dbname=team2026;charset=utf8mb4','root','',[
+              PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
+              PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
+          ]);
+          $base='/home/runner/work/cuberongyiyi/cuberongyiyi/team2026-patch/htdocs/Controllers/';
+          require $base.'Team2026Compat.php';
+          require $base.'Team2026CompatFix.php';
+          ensureTeam2026Compatibility($pdo);
+          ensureTeam2026CompatibilityFix($pdo);
+          function t($ok,$m){if(!$ok){fwrite(STDERR,"FAIL: $m\n");exit(1);}echo "OK: $m\n";}
+
+          $pdo->exec("INSERT INTO account(username,password,ref_id) VALUES('newweb','123456',0)");
+          $a=$pdo->query("SELECT active,email,token,xsrf_token,newpass,sotien,danap FROM account WHERE username='newweb'")->fetch();
+          t($a && (int)$a['active']===0,'register minimal fields');
+          t($a['email']==='' && $a['token']==='' && $a['xsrf_token']==='' && $a['newpass']==='','game string defaults');
+
+          $admin=$pdo->query("SELECT vnd,sotien,tongnap,danap,isFounder,isQuanTriVien FROM account WHERE username='admin'")->fetch();
+          t((int)$admin['vnd']===(int)$admin['sotien'],'existing balance preserved');
+          t((int)$admin['tongnap']===(int)$admin['danap'],'existing topup preserved');
+          t((int)$admin['isFounder']===1 && (int)$admin['isQuanTriVien']===1,'admin mapped');
+
+          $old=$pdo->query("SELECT title,description,category,comments FROM posts WHERE tieude='Bai cu team2026'")->fetch();
+          t($old && $old['title']==='Bai cu team2026','legacy forum visible');
+          t((int)$old['category']===1,'legacy pinned forum mapped');
+
+          $pdo->prepare("INSERT INTO posts(title,description,category,comments,created_at) VALUES(?,?,?,?,NOW())")
+              ->execute(['Bai web moi','Noi dung web',1,'[]']);
+          $p=$pdo->query("SELECT tieude,noidung,ghimbai FROM posts WHERE title='Bai web moi'")->fetch();
+          t($p && $p['tieude']==='Bai web moi' && (int)$p['ghimbai']===1,'new forum sync two schemas');
+
+          $pdo->exec("INSERT INTO payments(refNo,name,amount,status,date) VALUES('TX1','newweb',20000,1,NOW())");
+          $pdo->exec("INSERT INTO payments(name,amount,date,status,description) VALUES('newweb',30000,NOW(),1,'mb')");
+          t((int)$pdo->query("SELECT COUNT(*) FROM payments WHERE amount>0")->fetchColumn()===2,'ACB and MBBank payment schemas');
+
+          $pdo->exec("INSERT INTO vp_bank(tid,description,amount,username,status,time) VALUES('SP1','test',50000,'newweb',1,NOW())");
+          t((int)$pdo->query("SELECT COUNT(*) FROM vp_bank WHERE tid='SP1'")->fetchColumn()===1,'SePay vp_bank');
+
+          // Test balance synchronization in both directions.
+          $pdo->exec("UPDATE account SET vnd=vnd+10000 WHERE username='newweb'");
+          $b=$pdo->query("SELECT vnd,sotien FROM account WHERE username='newweb'")->fetch();
+          t((int)$b['vnd']===(int)$b['sotien'],'vnd -> sotien sync');
+          $pdo->exec("UPDATE account SET sotien=sotien+5000 WHERE username='newweb'");
+          $b=$pdo->query("SELECT vnd,sotien FROM account WHERE username='newweb'")->fetch();
+          t((int)$b['vnd']===(int)$b['sotien'],'sotien -> vnd sync');
+
+          $pdo->exec("UPDATE account SET danap=danap+7000 WHERE username='newweb'");
+          $b=$pdo->query("SELECT tongnap,danap FROM account WHERE username='newweb'")->fetch();
+          t((int)$b['tongnap']===(int)$b['danap'],'danap -> tongnap sync');
+
+          $pdo->exec("UPDATE settings SET NumberBank='63816766778899'");
+          t($pdo->query("SELECT NumberBank FROM settings LIMIT 1")->fetchColumn()==='63816766778899','long bank account number');
+
+          foreach(['history_active','history_bank','history_exchange','moc_nap','web_compat_meta'] as $table){
+            $q=$pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='team2026' AND TABLE_NAME=?");$q->execute([$table]);t((int)$q->fetchColumn()===1,$table.' exists');
+          }
+          PHP
+          php /tmp/yiyi-test.php
+
+      - name: Build ZIP
+        run: |
+          cd team2026-patch
+          zip -r ../PATCH_WEB_TEAM2026_COPY_DE_YIYI.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_WEB_TEAM2026_COPY_DE_YIYI.zip
+          unzip -l PATCH_WEB_TEAM2026_COPY_DE_YIYI.zip
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_WEB_TEAM2026_COPY_DE_YIYI_FINAL
+          path: PATCH_WEB_TEAM2026_COPY_DE_YIYI.zip
+          retention-days: 7
+          if-no-files-found: error
