@@ -1,0 +1,30 @@
+PATCH WEB YIYI -> DATABASE team2026
+=================================
+
+Cách cài:
+1. BACKUP database + thư mục web hiện tại.
+2. Giải nén PATCH_WEB_TEAM2026_COPY_DE_YIYI.zip.
+3. Copy thư mục htdocs trong patch.
+4. Paste đè vào thư mục web hiện tại -> Replace/Overwrite.
+5. Mở website một lần. Source sẽ kết nối database team2026 và tự bổ sung lớp tương thích schema.
+6. Ctrl + F5 và test: đăng ký -> đăng nhập -> diễn đàn -> nạp thẻ/chuyển khoản.
+
+Patch chỉ có 2 file PHP cần đè:
+- htdocs/Controllers/Configs.php
+- htdocs/Controllers/Team2026Compat.php
+
+Những gì patch xử lý tự động:
+- Kết nối web vào database team2026.
+- Bổ sung field account mà web hiện tại cần: ref_id, danap, sotien, quyền admin, OTP, v.v.
+- Không cộng tiền nạp cho tài khoản mới.
+- Giữ nguyên số dư/dữ liệu account đang có.
+- Tương thích forum team2026 (tieude/noidung/ghimbai) với web (title/description/category/comments), giữ bài cũ.
+- Tương thích payments của SQL mới với autobank/card source hiện tại.
+- Tạo các bảng web còn thiếu: vp_bank, history_active, history_bank, history_exchange, moc_nap.
+- Đổi settings.NumberBank sang varchar để không lỗi số tài khoản dài.
+- Không xóa/rename bảng gameplay, không đụng player, item, map, boss hoặc dữ liệu game.
+
+LƯU Ý:
+- DB MySQL/MariaDB user phải có quyền ALTER/CREATE/TRIGGER trong lần chạy đầu tiên.
+- Database cần có tên: team2026.
+- Host/user/password DB vẫn đọc từ Controllers/.env hiện tại, patch không thay .env.
