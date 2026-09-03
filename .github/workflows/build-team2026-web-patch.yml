@@ -1,0 +1,118 @@
+name: Build Team2026 Web Patch
+
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'team2026-patch/**'
+      - 'team2026-patch-tests/**'
+      - '.github/workflows/build-team2026-web-patch.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP syntax check
+        run: |
+          php -l team2026-patch/htdocs/Controllers/Configs.php
+          php -l team2026-patch/htdocs/Controllers/Team2026Compat.php
+
+      - name: Start MariaDB 10.4
+        run: |
+          docker run -d --name yiyi-mariadb \
+            -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 \
+            -p 3306:3306 mariadb:10.4
+          for i in {1..60}; do
+            if docker exec yiyi-mariadb mariadb-admin ping -uroot --silent; then exit 0; fi
+            sleep 2
+          done
+          docker logs yiyi-mariadb
+          exit 1
+
+      - name: Load original team2026-compatible test schema
+        run: docker exec -i yiyi-mariadb mariadb -uroot < team2026-patch-tests/minimal-team2026.sql
+
+      - name: Install PDO MySQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y php-mysql
+
+      - name: Run compatibility migration and integration tests
+        run: |
+          cat > /tmp/test-team2026.php <<'PHP'
+          <?php
+          $pdo = new PDO('mysql:host=127.0.0.1;dbname=team2026;charset=utf8mb4', 'root', '', [
+              PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+              PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+          ]);
+          require __DIR__ . '/../home/runner/work/cuberongyiyi/cuberongyiyi/team2026-patch/htdocs/Controllers/Team2026Compat.php';
+          ensureTeam2026Compatibility($pdo);
+
+          function ok($condition, $message) {
+              if (!$condition) { fwrite(STDERR, "FAIL: $message\n"); exit(1); }
+              echo "OK: $message\n";
+          }
+
+          // Register API compatibility: only username/password/ref_id.
+          $pdo->exec("INSERT INTO account(username,password,ref_id) VALUES ('newweb','123456',0)");
+          $a = $pdo->query("SELECT active,sotien,danap,ref_id FROM account WHERE username='newweb'")->fetch();
+          ok($a && (int)$a['active'] === 0, 'new account inserts with active=0');
+          ok(array_key_exists('sotien', $a) && array_key_exists('danap', $a), 'autobank account fields exist');
+
+          // Existing money and admin permissions preserved/backfilled.
+          $admin = $pdo->query("SELECT vnd,sotien,tongnap,danap,isFounder,isQuanTriVien FROM account WHERE username='admin'")->fetch();
+          ok((int)$admin['sotien'] === (int)$admin['vnd'], 'existing VND backfilled to sotien');
+          ok((int)$admin['danap'] === (int)$admin['tongnap'], 'existing tongnap backfilled to danap');
+          ok((int)$admin['isFounder'] === 1 && (int)$admin['isQuanTriVien'] === 1, 'admin permissions preserved');
+
+          // Old team2026 forum rows are visible to current web columns.
+          $old = $pdo->query("SELECT title,description,category,comments FROM posts WHERE tieude='Bai cu team2026'")->fetch();
+          ok($old && $old['title'] === 'Bai cu team2026', 'old forum title migrated');
+          ok((int)$old['category'] === 1, 'old pinned post mapped to category=1');
+
+          // Current web can create posts without legacy columns.
+          $st = $pdo->prepare("INSERT INTO posts(title,description,category,comments,created_at) VALUES (?,?,?,?,NOW())");
+          $st->execute(['Bai web moi','Noi dung web',1,'[]']);
+          $newPost = $pdo->query("SELECT title,tieude,description,noidung,category,ghimbai FROM posts WHERE title='Bai web moi'")->fetch();
+          ok($newPost && $newPost['tieude'] === 'Bai web moi', 'web post syncs to legacy title');
+          ok((int)$newPost['ghimbai'] === 1, 'web pin syncs to legacy ghimbai');
+
+          // ACB and MBBank legacy inserts both work against team2026 payments.
+          $pdo->exec("INSERT INTO payments(refNo,name,amount,status,date) VALUES ('TX1','newweb',20000,1,NOW())");
+          $pdo->exec("INSERT INTO payments(name,amount,date,status,description) VALUES ('newweb',30000,NOW(),1,'test mb')");
+          ok((int)$pdo->query("SELECT COUNT(*) FROM payments WHERE amount>0")->fetchColumn() === 2, 'legacy autobank payment inserts work');
+
+          // SePay history table exists and accepts source schema.
+          $pdo->exec("INSERT INTO vp_bank(tid,description,amount,username,status,time) VALUES ('SEPAY1','test',50000,'newweb',1,NOW())");
+          ok((int)$pdo->query("SELECT COUNT(*) FROM vp_bank WHERE tid='SEPAY1'")->fetchColumn() === 1, 'vp_bank works');
+
+          // NumberBank can store long bank account numbers.
+          $pdo->exec("UPDATE settings SET NumberBank='63816766778899'");
+          ok($pdo->query("SELECT NumberBank FROM settings LIMIT 1")->fetchColumn() === '63816766778899', 'long bank account number works');
+
+          foreach (['history_active','history_bank','history_exchange','moc_nap','web_compat_meta'] as $table) {
+              $q = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='team2026' AND TABLE_NAME=?");
+              $q->execute([$table]);
+              ok((int)$q->fetchColumn() === 1, "$table exists");
+          }
+          PHP
+          php /tmp/test-team2026.php
+
+      - name: Package copy-over patch
+        run: |
+          cd team2026-patch
+          zip -r ../PATCH_WEB_TEAM2026_COPY_DE_YIYI.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -l PATCH_WEB_TEAM2026_COPY_DE_YIYI.zip
+
+      - name: Upload patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_WEB_TEAM2026_COPY_DE_YIYI
+          path: PATCH_WEB_TEAM2026_COPY_DE_YIYI.zip
+          retention-days: 7
+          if-no-files-found: error
