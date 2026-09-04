@@ -1122,26 +1122,36 @@ public class PlayerDAO {
     }
 
     public static boolean MuaThanhVien(Player player, int num) {
-        PreparedStatement ps = null;
-        try (Connection con = LocalManager.getConnection();) {
-            if (player.getSession().vnd >= num) {
-            } else {
-                return false;
-            }
-            ps = con.prepareStatement("update account set vnd = (vnd - ?), active = ? where id = ?");
+        if (player == null || player.getSession() == null || num <= 0) {
+            return false;
+        }
+
+        try (Connection con = LocalManager.getConnection();
+             PreparedStatement ps = con.prepareStatement(
+                     "UPDATE account SET vnd = vnd - ?, active = ? WHERE id = ? AND vnd >= ?")) {
+
             ps.setInt(1, num);
             ps.setInt(2, player.getSession().actived ? 1 : 0);
             ps.setInt(3, player.getSession().userId);
-            ps.executeUpdate();
-            player.getSession().vnd -= num;
+            ps.setInt(4, num);
+
+            boolean success = ps.executeUpdate() == 1;
+
+            try (PreparedStatement check = con.prepareStatement(
+                    "SELECT vnd FROM account WHERE id = ? LIMIT 1")) {
+                check.setInt(1, player.getSession().userId);
+                try (ResultSet rs = check.executeQuery()) {
+                    if (rs.next()) {
+                        player.getSession().vnd = rs.getInt("vnd");
+                    }
+                }
+            }
+
+            return success;
         } catch (Exception e) {
             Logger.logException(PlayerDAO.class, e, "Lỗi update mua thành viên " + player.name);
             return false;
         }
-        return true;
     }
 
-    public static void LogAddPoint(String name, int id, int point, String type) {
-        System.out.println(name + " - " + id + " - " + point + " - " + type);
-    }
 }
