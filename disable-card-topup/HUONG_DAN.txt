@@ -1,0 +1,28 @@
+PATCH TẮT NẠP THẺ CÀO TỰ ĐỘNG - YIYI
+
+ĐÃ TẮT:
+- Form Nạp Thẻ Cào Tự Động trên /Users/Payments
+- Nút chọn Nạp Thẻ Cào
+- Lịch sử nạp thẻ trên trang Payments
+- POST trực tiếp vào /Api/Card
+
+GIỮ NGUYÊN:
+- Chuyển khoản ngân hàng
+- QR Autobank
+- Nội dung chuyển khoản theo ID tài khoản
+- Lịch sử vp_bank
+- Cộng VND qua Autobank
+- Quy đổi VND trong game
+- Forum / Giftcode / Panel / source game không bị đụng tới
+
+BẢO VỆ:
+Ngay cả khi người dùng gọi trực tiếp /Api/Card bằng POST,
+API vẫn trả 403 và không gửi dữ liệu thẻ sang cổng nạp.
+
+CÀI:
+1. Backup 2 file hiện tại:
+   htdocs/Pages/Payments.php
+   htdocs/Api/Card.php
+2. Copy thư mục htdocs trong patch đè vào web hiện tại.
+3. Ctrl + F5.
+4. Test /Users/Payments: chỉ còn Chuyển khoản / Autobank.
