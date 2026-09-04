@@ -1,0 +1,86 @@
+PATCH TEAM2026 - THANH TOÁN & QUY ĐỔI THEO YIYI
+
+MỤC TIÊU
+- Giữ nguyên cấu trúc/gameplay Team2026 ngoài phần thanh toán - quy đổi.
+- Dùng account.vnd làm số dư tiền nạp từ web.
+- Nhận được account.thoi_vang mà web đã cộng.
+- Thỏi vàng ID 457 bấm sử dụng được.
+- Shop Hồng ngọc kiểm tra đúng số dư ruby.
+
+CƠ CHẾ ĐÃ MAP THEO YIYI
+1) Gói VND -> Thỏi vàng
+   5K      = 30 Thỏi vàng
+   10K     = 70 Thỏi vàng
+   20K     = 150 Thỏi vàng
+   50K     = 400 Thỏi vàng
+   100K    = 850 Thỏi vàng
+   200K    = 1.800 Thỏi vàng
+   500K    = 4.700 Thỏi vàng
+   1M      = 10.000 Thỏi vàng
+   2M      = 22.000 Thỏi vàng
+   5M      = 75.000 Thỏi vàng
+   10M     = 200.000 Thỏi vàng
+
+2) Gói VND -> Hồng ngọc
+   5K      = 160 Hồng ngọc
+   10K     = 330 Hồng ngọc
+   20K     = 680 Hồng ngọc
+   50K     = 1.800 Hồng ngọc
+   100K    = 3.800 Hồng ngọc
+   200K    = 7.500 Hồng ngọc
+   500K    = 20.000 Hồng ngọc
+   1M      = 45.000 Hồng ngọc
+   2M      = 100.000 Hồng ngọc
+   5M      = 300.000 Hồng ngọc
+   10M     = 1.000.000 Hồng ngọc
+
+3) Quy đổi phụ
+   1 Thỏi vàng = 100 Hồng ngọc
+   Form VND -> Thỏi vàng cũ: 1.000 VND = 5 Thỏi vàng
+   Form VND -> Ngọc xanh cũ: 1.000 VND = 30 Ngọc xanh
+
+4) Dùng Thỏi vàng ID 457
+   Bấm "Sử dụng" -> chọn số lượng bán.
+   1 Thỏi vàng = 500.000.000 vàng.
+   Có kiểm tra giới hạn vàng trước khi bán.
+
+5) Web -> Game
+   Mở Bò Mộng -> "Nạp / Quy đổi".
+   Menu tự đọc lại account.vnd và account.thoi_vang từ SQL,
+   nên tiền web vừa cộng có thể được cập nhật ngay khi nhân vật đang online.
+   "Nhận Thỏi từ Web" chuyển account.thoi_vang thành item ID 457 trong hành trang
+   và đặt account.thoi_vang về 0 sau khi nhận thành công.
+
+CÁCH CÀI
+1. TẮT SERVER GAME.
+2. Backup source + SQL hiện tại.
+3. Giải nén file patch.
+4. Copy thư mục SRC trong patch.
+5. Paste đè vào thư mục source Team2026 hiện tại -> chọn Replace/Overwrite.
+6. Build lại project/JAR.
+7. Chạy lại server.
+
+KHÔNG CẦN IMPORT SQL.
+Patch sử dụng các cột account.vnd và account.thoi_vang đã có trong Team2026.
+
+FILE ĐƯỢC THAY
+SRC/src/nro/models/consts/ConstNpc.java
+SRC/src/nro/models/npc/NpcFactory.java
+SRC/src/nro/models/npc_list/BoMong.java
+SRC/src/nro/models/services/YiYiPaymentService.java        (file mới)
+SRC/src/nro/models/services_func/Input.java
+SRC/src/nro/models/services_func/UseItem.java
+SRC/src/nro/models/shop/ShopService.java
+
+TEST SAU KHI CÀI
+A. Nạp tiền trên web -> vào Bò Mộng -> Nạp / Quy đổi -> kiểm tra số dư VND.
+B. Chọn một gói Thỏi vàng và kiểm tra đúng số lượng nhận.
+C. Chọn một gói Hồng ngọc và kiểm tra đúng số lượng nhận.
+D. Bấm sử dụng item 457 -> bán 1 thỏi -> nhận 500.000.000 vàng.
+E. Nếu web cộng account.thoi_vang -> bấm "Nhận Thỏi từ Web".
+F. Logout/login lại để kiểm tra dữ liệu vẫn lưu bình thường.
+
+LƯU Ý
+- Patch không thay cổng thanh toán/autobank/API web.
+- Không chứa hoặc thay partner key/API key nạp thẻ.
+- Web chỉ cần tiếp tục ghi số dư vào cùng database account của game.
