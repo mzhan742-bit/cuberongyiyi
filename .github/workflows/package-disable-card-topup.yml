@@ -1,0 +1,40 @@
+name: Package Disable Card Topup
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'disable-card-topup/**'
+      - '.github/workflows/package-disable-card-topup.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP lint
+        run: |
+          php -l disable-card-topup/htdocs/Pages/Payments.php
+          php -l disable-card-topup/htdocs/Api/Card.php
+
+      - name: Sanity
+        run: |
+          grep -q "CHUYỂN KHOẢN / AUTOBANK" disable-card-topup/htdocs/Pages/Payments.php
+          ! grep -q "cardPaymentForm" disable-card-topup/htdocs/Pages/Payments.php
+          grep -q "status.*disabled" disable-card-topup/htdocs/Api/Card.php
+          ! grep -q "curl_init" disable-card-topup/htdocs/Api/Card.php
+
+      - name: Build ZIP
+        run: |
+          cd disable-card-topup
+          zip -r ../PATCH_YIYI_TAT_NAP_THE_CAO_TU_DONG.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_TAT_NAP_THE_CAO_TU_DONG.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_TAT_NAP_THE_CAO_TU_DONG
+          path: PATCH_YIYI_TAT_NAP_THE_CAO_TU_DONG.zip
+          retention-days: 7
+          if-no-files-found: error
