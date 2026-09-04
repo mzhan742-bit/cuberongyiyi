@@ -1,0 +1,60 @@
+name: Build YiYi Web Exchange Patch
+
+on:
+  push:
+    branches:
+      - team2026-web-exchange-gameplay-v2
+  workflow_dispatch:
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP syntax check
+        run: |
+          php -l PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI/htdocs/Controllers/WebExchange.php
+          php -l PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI/htdocs/Api/Exchange.php
+          php -l PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI/htdocs/Users/Exchange.php
+
+      - name: Verify gameplay rates
+        run: |
+          php -r '
+            require "PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI/htdocs/Controllers/WebExchange.php";
+            $g = webExchangeReward("goldbar", 10000);
+            $m = webExchangeReward("gem", 10000);
+            if ($g["reward"] !== 40 || $g["ticket"] !== 10 || $g["event_point"] !== 50) exit(1);
+            if ($m["reward"] !== 10000 || $m["ticket"] !== 10 || $m["event_point"] !== 50) exit(2);
+            echo "Rates OK\n";
+          '
+
+      - name: Verify Java patch markers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI/SRC/src/nro/models")
+          p = (root/"player/Player.java").read_text(encoding="utf-8")
+          d = (root/"database/PlayerDAO.java").read_text(encoding="utf-8")
+          u = (root/"services_func/UseItem.java").read_text(encoding="utf-8")
+          s = (root/"services/WebExchangeService.java").read_text(encoding="utf-8")
+          assert "WebExchangeService.gI().update(this);" in p
+          assert "UPDATE account SET vnd = vnd - ? WHERE id = ? AND vnd >= ?" in d
+          assert "case 457:" in u and "createFormBanSLL(pl)" in u
+          assert "web_exchange_queue" in s
+          assert "GOLD_BAR_ID = 457" in s
+          assert "BONUS_TICKET_ID = 718" in s
+          for path in [root/"player/Player.java", root/"database/PlayerDAO.java", root/"services_func/UseItem.java", root/"services/WebExchangeService.java"]:
+              text = path.read_text(encoding="utf-8")
+              if text.count("{") != text.count("}"):
+                  raise SystemExit(f"Brace mismatch: {path}")
+          print("Java patch markers OK")
+          PY
+
+      - name: Upload patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI
+          path: PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI/
+          if-no-files-found: error
