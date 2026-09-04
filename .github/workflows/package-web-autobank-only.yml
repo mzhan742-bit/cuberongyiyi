@@ -1,0 +1,43 @@
+name: Package YiYi Web Autobank Only
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'web-clean-autobank/**'
+      - '.github/workflows/package-web-autobank-only.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP lint
+        run: |
+          php -l web-clean-autobank/htdocs/Pages/Active.php
+          php -l web-clean-autobank/htdocs/Pages/Giftcode.php
+          php -l web-clean-autobank/htdocs/Api/Post.php
+          php -l web-clean-autobank/htdocs/Forum.php
+          php -l web-clean-autobank/htdocs/Controllers/GameplayPostSeed.php
+
+      - name: Sanity
+        run: |
+          grep -q "Location: /Users/Payments" web-clean-autobank/htdocs/Pages/Active.php
+          grep -q "detail" web-clean-autobank/htdocs/Pages/Giftcode.php
+          grep -q "DELETE FROM comments WHERE post_id" web-clean-autobank/htdocs/Api/Post.php
+          grep -q "CƠ CHẾ GAMEPLAY%" web-clean-autobank/htdocs/Forum.php
+
+      - name: Build zip
+        run: |
+          cd web-clean-autobank
+          zip -r ../PATCH_YIYI_WEB_AUTOBANK_ONLY_FIX_FORUM_GIFTCODE.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_WEB_AUTOBANK_ONLY_FIX_FORUM_GIFTCODE.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_WEB_AUTOBANK_ONLY_FIX_FORUM_GIFTCODE
+          path: PATCH_YIYI_WEB_AUTOBANK_ONLY_FIX_FORUM_GIFTCODE.zip
+          retention-days: 7
+          if-no-files-found: error
