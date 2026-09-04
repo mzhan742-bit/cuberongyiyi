@@ -1,0 +1,24 @@
+PATCH QUY ĐỔI WEB <-> GAMEPLAY TEAM2026
+
+TỶ LỆ GIỮ NGUYÊN GAME:
+- 10.000 VNĐ = 40 Thỏi vàng Item ID 457.
+- 10.000 VNĐ = 10.000 Ngọc xanh.
+- Mỗi 10.000 VNĐ: +10 Vé tặng ngọc ID 718 +50 điểm sự kiện.
+- Mỗi lần 10.000 - 5.000.000 VNĐ.
+
+CÀI:
+1) Backup web + game + DB.
+2) Copy htdocs đè source web.
+3) Copy SRC đè source game Team2026.
+4) Build lại server và restart.
+5) Vào nút Đổi thỏi vàng trên web, trang sẽ có cả Đổi Thỏi vàng và Đổi Ngọc xanh.
+
+Không cần import SQL. Bảng web_exchange_queue tự tạo.
+Web không sửa items_bag/data_inventory trực tiếp.
+Online nhận sau vài giây; offline giữ PENDING và nhận khi đăng nhập.
+Hành trang thiếu chỗ: giữ PENDING, không mất giao dịch.
+
+FILE THAY:
+htdocs/Pages/Active.php
+SRC/src/nro/models/server/Client.java
+SRC/src/nro/models/services/WebExchangeService.java
