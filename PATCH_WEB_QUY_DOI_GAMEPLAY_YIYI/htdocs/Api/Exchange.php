@@ -4,7 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../Controllers/Configs.php';
 require_once __DIR__ . '/../Controllers/WebExchange.php';
 
-function exchangeResponse(string $status, string $message, array $data = []): never
+function exchangeResponse(string $status, string $message, array $data = [])
 {
     http_response_code($status === 'success' ? 200 : 400);
     echo json_encode([
@@ -30,7 +30,7 @@ try {
 }
 
 $csrfToken = (string)($_POST['csrf_token'] ?? '');
-if ($csrfToken === '' || !verifyToken($csrfToken)) {
+if ($csrfToken === '' || !isset($_SESSION['csrf_tokens'][$csrfToken])) {
     exchangeResponse('error', 'Phiên quy đổi đã hết hạn. Vui lòng tải lại trang.');
 }
 
