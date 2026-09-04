@@ -1,0 +1,39 @@
+YIYI V3 - FIX WEB EXCHANGE + GIU NGUYEN PANEL
+
+QUAN TRONG:
+V2 trước đó đã ghi đè ServerManager.java và Client.java bằng bản source gốc.
+V3 KHÔNG làm như vậy nữa.
+
+NẾU PANEL ĐANG MẤT:
+1. Chạy lại bộ cài NRO Manager trước đó của bạn:
+   YIYI_V4_2_CAI_TAT_CA_1_FILE_JAVAC_FIX.bat
+   -> để khôi phục Panel / hook Panel.
+2. Sau đó chạy APPLY_V3_KEEP_PANEL.bat.
+
+CÁCH CÀI V3:
+1. Giải nén patch.
+2. Copy cả thư mục PATCH_V3 vào thư mục gốc chứa SRC.
+3. Chạy APPLY_V3_KEEP_PANEL.bat.
+4. Build lại server JAR.
+5. Restart server.
+6. Đăng nhập nhân vật rồi xem giao dịch web.
+
+V3 CHỈ:
+- thêm WebExchangeService.java
+- chèn 2 dòng khởi động worker vào ServerManager.java HIỆN TẠI
+- không thay nguyên ServerManager.java
+- không thay nguyên Client.java
+- tự backup core trước khi sửa
+
+FIX DB:
+WebExchangeService V3 dùng LocalManager.executeQuery/executeUpdate của source,
+không giữ Connection riêng lâu dài, để giảm xung đột với PlayerDAO/subvnd.
+
+TỶ LỆ:
+10.000 VNĐ = 40 Thỏi vàng ID 457
+10.000 VNĐ = 10.000 Ngọc xanh
++ 10 Vé ID 718 / 10.000 VNĐ
++ 50 điểm sự kiện / 10.000 VNĐ
+
+GIAO DỊCH PENDING CŨ:
+KHÔNG XÓA. Sau khi V3 chạy và player online, worker sẽ xử lý.
