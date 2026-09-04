@@ -1,0 +1,40 @@
+PATCH WEB YIYI - AUTOBANK -> QUY ĐỔI TRONG GAME
+
+ĐÃ SỬA:
+1) Bỏ quy đổi trên web
+- /Pages/Active.php không còn form đổi Thỏi vàng/Ngọc xanh.
+- Nếu mở đường dẫn cũ, web chuyển về /Users/Payments.
+- Autobank/nạp tiền vẫn dùng như cũ.
+- Số dư VND được dùng để quy đổi trực tiếp trong game.
+
+2) Xóa bài gameplay cũ
+- Khi mở /Forum lần đầu sau khi copy patch:
+  + tìm bài có tiêu đề bắt đầu bằng "CƠ CHẾ GAMEPLAY"
+  + xóa comments liên quan trước
+  + xóa bài sau
+- GameplayPostSeed.php được vô hiệu hóa nên bài không tự sinh lại.
+
+3) Fix lỗi xóa bài
+- Lỗi cũ: comments.post_id đang FK tới posts.id nên không xóa parent trước được.
+- API mới xóa comments trước rồi mới xóa posts trong transaction.
+
+4) Fix Giftcode
+- Database team2026 dùng giftcode.detail, không có giftcode.item.
+- Trang Giftcode mới SELECT * và tự dùng:
+  detail nếu có, item nếu là schema cũ.
+- Hiển thị item + icon + số lượng + lượt còn.
+
+CÀI:
+1. Backup htdocs + database.
+2. Copy thư mục htdocs trong patch đè lên web hiện tại.
+3. Mở /Forum một lần để bài gameplay cũ tự được dọn.
+4. Ctrl+F5.
+5. Test:
+   - /Users/Giftcode
+   - /Users/Uploads -> Xóa bài
+   - /Users/Payments
+   - đường dẫn /Pages/Active.php phải chuyển về Payments
+
+LƯU Ý:
+- Không hoàn lại 2 giao dịch test admin.
+- Patch này KHÔNG đụng source game, Panel, Boss, Shop, gameplay.
