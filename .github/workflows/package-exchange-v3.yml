@@ -1,0 +1,31 @@
+name: Package YIYI V3 Keep Panel
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'exchange-patch-v3/**'
+      - '.github/workflows/package-exchange-v3.yml'
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sanity
+        run: |
+          grep -q "implements Runnable" exchange-patch-v3/FILES/SRC/src/nro/models/services/WebExchangeService.java
+          grep -q "LocalManager.executeQuery" exchange-patch-v3/FILES/SRC/src/nro/models/services/WebExchangeService.java
+          grep -q "LocalManager.executeUpdate" exchange-patch-v3/FILES/SRC/src/nro/models/services/WebExchangeService.java
+          grep -q "activeServerSocket();" exchange-patch-v3/APPLY_V3_KEEP_PANEL.bat
+          if grep -q "ServerManager.java" exchange-patch-v3/FILES/SRC/src/nro/models/services/WebExchangeService.java; then true; fi
+      - name: Build ZIP
+        run: |
+          cd exchange-patch-v3
+          zip -r ../PATCH_YIYI_V3_FIX_WEB_EXCHANGE_KEEP_PANEL.zip .
+          cd ..
+          unzip -t PATCH_YIYI_V3_FIX_WEB_EXCHANGE_KEEP_PANEL.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_V3_FIX_WEB_EXCHANGE_KEEP_PANEL
+          path: PATCH_YIYI_V3_FIX_WEB_EXCHANGE_KEEP_PANEL.zip
+          retention-days: 7
