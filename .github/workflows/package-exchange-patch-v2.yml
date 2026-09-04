@@ -1,0 +1,37 @@
+name: Package Web Gameplay Exchange Patch V2
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'exchange-patch-v2/**'
+      - '.github/workflows/package-exchange-patch-v2.yml'
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint
+        run: php -l exchange-patch-v2/htdocs/Pages/Active.php
+      - name: Sanity checks
+        run: |
+          grep -q 'new Thread(nro.models.services.WebExchangeService.gI(), "Web Exchange").start();' exchange-patch-v2/SRC/src/nro/models/server/ServerManager.java
+          grep -q 'implements Runnable' exchange-patch-v2/SRC/src/nro/models/services/WebExchangeService.java
+          grep -q 'WHERE status=.PENDING.' exchange-patch-v2/SRC/src/nro/models/services/WebExchangeService.java
+          grep -q 'getPlayerByUser' exchange-patch-v2/SRC/src/nro/models/services/WebExchangeService.java
+          grep -q 'pl.getSession().vnd' exchange-patch-v2/SRC/src/nro/models/services/WebExchangeService.java
+          if grep -q 'WebExchangeService' exchange-patch-v2/SRC/src/nro/models/server/Client.java; then
+            echo "Client.java van con hook cu"; exit 1;
+          fi
+      - name: Build ZIP
+        run: |
+          cd exchange-patch-v2
+          zip -r ../PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI_V2_FIX_PENDING.zip htdocs SRC HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI_V2_FIX_PENDING.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI_V2_FIX_PENDING
+          path: PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI_V2_FIX_PENDING.zip
+          retention-days: 7
+          if-no-files-found: error
