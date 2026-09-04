@@ -1,0 +1,35 @@
+PATCH V2 - FIX GIAO DICH WEB BI PENDING
+
+TRIEU CHUNG DA FIX:
+- Quy doi trong game hoat dong.
+- Quy doi tren web tao giao dich PENDING nhung game khong nhan.
+
+NGUYEN NHAN:
+- Web da tao queue thanh cong.
+- Phan Server Game chua co consumer chay on dinh de doc queue va phat thuong.
+
+V2:
+- Bo hook queue ra khoi Client.update().
+- Khoi dong 1 thread Web Exchange rieng trong ServerManager.
+- Moi 2 giay doc PENDING.
+- Player online: phat thuong ngay.
+- Player offline: giu PENDING, login xong se nhan.
+- Dong bo lai session.vnd sau khi web da tru VND.
+- Giữ đúng gameplay:
+  + 10.000 VNĐ = 40 Thỏi vàng ID 457.
+  + 10.000 VNĐ = 10.000 Ngọc xanh.
+  + mỗi 10.000 VNĐ = 10 Vé ID 718 + 50 điểm sự kiện.
+
+CACH CAI:
+1. Backup source game + web.
+2. Copy htdocs de vao web.
+3. Copy SRC de vao source game.
+4. BAT BUOC BUILD LAI server JAR sau khi copy SRC.
+5. Restart server game.
+6. Khong can xoa 2 giao dich PENDING cu. Sau khi player online, V2 se tu xu ly.
+
+FILE:
+htdocs/Pages/Active.php
+SRC/src/nro/models/server/Client.java
+SRC/src/nro/models/server/ServerManager.java
+SRC/src/nro/models/services/WebExchangeService.java
