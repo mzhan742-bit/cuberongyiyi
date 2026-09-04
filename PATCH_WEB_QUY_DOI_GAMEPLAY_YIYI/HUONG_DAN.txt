@@ -1,0 +1,85 @@
+PATCH QUY ĐỔI WEB -> GAMEPLAY YIYI
+
+MỤC TIÊU
+- Quy đổi trực tiếp trên website, dùng đúng cơ chế đang chạy trong Team2026.
+- Không sửa cổng nạp tiền/autobank hiện tại.
+- Web vẫn nạp vào account.vnd.
+- Khi người chơi bấm quy đổi trên web, server game tự cộng vật phẩm/ngọc vào nhân vật.
+- Tránh sửa thẳng items_bag/data_inventory từ PHP khi nhân vật đang online.
+
+TỶ LỆ GIỮ NGUYÊN TỪ SOURCE GAME
+- 10.000 VNĐ = 40 Thỏi vàng, Item ID 457.
+- 10.000 VNĐ = 10.000 Ngọc xanh.
+- Mỗi 10.000 VNĐ quy đổi: +10 Vé tặng ngọc, Item ID 718.
+- Mỗi 10.000 VNĐ quy đổi: +50 điểm sự kiện.
+- Mỗi giao dịch: tối thiểu 10.000 VNĐ, tối đa 5.000.000 VNĐ.
+- Đổi Thỏi vàng yêu cầu tài khoản đã active, đúng như TRADE_GOLD hiện tại.
+
+WEB
+Copy thư mục htdocs trong patch đè vào thư mục web hiện tại.
+Không cần sửa .htaccess: source đang có rewrite .php tổng quát, file /Users/Exchange và /Api/Exchange chạy trực tiếp.
+Mở:
+  /Users/Exchange
+
+Lần đầu mở trang, web tự tạo bảng web_exchange_queue.
+Database user cần quyền CREATE TABLE một lần.
+
+GAME
+1. Tắt server.
+2. Backup SRC hiện tại.
+3. Copy thư mục SRC trong patch đè vào source Team2026.
+4. Build lại JAR/project.
+5. Chạy server.
+
+FILE GAME ĐƯỢC THAY/THÊM
+- SRC/src/nro/models/player/Player.java
+  + kiểm tra giao dịch web định kỳ khi player online.
+- SRC/src/nro/models/database/PlayerDAO.java
+  + trừ account.vnd theo UPDATE có điều kiện để tránh âm tiền khi web và game cùng thao tác.
+- SRC/src/nro/models/services_func/UseItem.java
+  + Item 457 bấm Sử dụng sẽ mở form bán Thỏi vàng hiện có.
+  + Không đổi tỷ lệ bán Thỏi vàng hiện tại trong Input.java.
+- SRC/src/nro/models/services/WebExchangeService.java
+  + file mới xử lý queue web -> game.
+
+CƠ CHẾ
+Web:
+  account.vnd
+      -> trừ VNĐ trong transaction
+      -> web_exchange_queue = PENDING
+
+Game:
+  player online: kiểm tra khoảng 2,5 giây/lần
+  player offline: nhận khi đăng nhập
+      -> Thỏi vàng ID 457 hoặc inventory.gem
+      -> Vé ID 718
+      -> điểm sự kiện
+      -> save player ngay
+      -> queue = DONE
+      -> refresh lại session.vnd
+
+TRƯỜNG HỢP HÀNH TRANG ĐẦY
+- Giao dịch không mất.
+- Queue chuyển WAITING_BAG.
+- Khi có đủ ô trống, server tự xử lý tiếp.
+- VNĐ đã được giữ/trừ trên web để tránh chi tiêu trùng.
+
+TEST NHANH
+1. Nạp 100.000 VNĐ -> kiểm tra account.vnd tăng.
+2. Vào /Users/Exchange.
+3. Đổi 100.000 VNĐ sang Thỏi vàng:
+   - nhận 400 Thỏi vàng ID 457
+   - nhận 100 Vé ID 718
+   - +500 điểm sự kiện
+4. Đổi 100.000 VNĐ sang Ngọc xanh:
+   - nhận 100.000 Ngọc xanh
+   - nhận 100 Vé ID 718
+   - +500 điểm sự kiện
+5. Khi đang online, giao dịch nên về sau vài giây.
+6. Bấm Sử dụng item 457 -> mở form bán Thỏi vàng đang có của source.
+
+LƯU Ý
+- Patch không đụng partner key, API key, tài khoản ngân hàng.
+- Patch không đổi shop, map, boss, item template.
+- Không dùng account.thoi_vang cho giao dịch mới; Thỏi vàng mới là item 457 thật trong hành trang.
+- history cũ không bị xóa.
