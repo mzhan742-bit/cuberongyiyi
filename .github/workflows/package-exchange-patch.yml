@@ -1,0 +1,33 @@
+name: Package Web Gameplay Exchange Patch
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'exchange-patch/**'
+      - '.github/workflows/package-exchange-patch.yml'
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint
+        run: php -l exchange-patch/htdocs/Pages/Active.php
+      - name: Sanity checks
+        run: |
+          grep -q "10.000 VNĐ = 40 Thỏi vàng" exchange-patch/HUONG_DAN.txt
+          grep -q "createNewItem((short)457" exchange-patch/SRC/src/nro/models/services/WebExchangeService.java
+          grep -q "pl.inventory.gem" exchange-patch/SRC/src/nro/models/services/WebExchangeService.java
+          grep -q "WebExchangeService.gI().processPending" exchange-patch/SRC/src/nro/models/server/Client.java
+      - name: Build ZIP
+        run: |
+          cd exchange-patch
+          zip -r ../PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI.zip htdocs SRC HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI
+          path: PATCH_WEB_QUY_DOI_GAMEPLAY_YIYI.zip
+          retention-days: 7
+          if-no-files-found: error
