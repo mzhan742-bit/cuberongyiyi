@@ -1,0 +1,88 @@
+name: Build Team2026 YiYi Payment Patch
+
+on:
+  push:
+    branches:
+      - team2026-yiyi-payment-v1
+  workflow_dispatch:
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate Java syntax
+        shell: bash
+        run: |
+          python -m pip install --quiet tree_sitter tree_sitter_java
+          python - <<'PY'
+          from pathlib import Path
+          from tree_sitter import Language, Parser
+          import tree_sitter_java
+
+          root = Path("PATCH_TEAM2026_THANH_TOAN_YIYI/SRC/src")
+          files = sorted(root.rglob("*.java"))
+          assert files, "No Java files found"
+
+          language = Language(tree_sitter_java.language())
+          try:
+              parser = Parser(language)
+          except TypeError:
+              parser = Parser()
+              parser.language = language
+
+          errors = []
+          for path in files:
+              data = path.read_bytes()
+              tree = parser.parse(data)
+              stack = [tree.root_node]
+              bad = []
+              while stack:
+                  node = stack.pop()
+                  if node.type == "ERROR" or node.is_missing:
+                      bad.append((node.type, node.start_point, node.end_point))
+                  stack.extend(node.children)
+              if bad:
+                  errors.append((str(path), bad[:20]))
+
+          if errors:
+              for path, bad in errors:
+                  print("SYNTAX ERROR:", path, bad)
+              raise SystemExit(1)
+
+          print(f"Java syntax OK: {len(files)} files")
+          PY
+
+      - name: Validate required patch markers
+        shell: bash
+        run: |
+          set -e
+          ROOT="PATCH_TEAM2026_THANH_TOAN_YIYI/SRC/src/nro/models"
+          grep -q "class YiYiPaymentService" "$ROOT/services/YiYiPaymentService.java"
+          grep -q "GOLD_BAR_PACKAGES" "$ROOT/services/YiYiPaymentService.java"
+          grep -q "claimPendingGoldBars" "$ROOT/services/YiYiPaymentService.java"
+          grep -q "TRADE_RUBY_YIYI" "$ROOT/services_func/Input.java"
+          grep -q "case 457: // Thỏi vàng - cơ chế YiYi" "$ROOT/services_func/UseItem.java"
+          grep -q "USE_THOI_VANG = 10028" "$ROOT/consts/ConstNpc.java"
+          grep -q "case ConstNpc.USE_THOI_VANG" "$ROOT/npc/NpcFactory.java"
+          grep -q "500_000_000L" "$ROOT/npc/NpcFactory.java"
+          grep -q "MENU_YIYI_PAYMENT" "$ROOT/npc_list/BoMong.java"
+          grep -q "player.inventory.ruby < ruby" "$ROOT/shop/ShopService.java"
+          echo "Required markers OK"
+
+      - name: Upload patch ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_TEAM2026_THANH_TOAN_YIYI
+          path: |
+            PATCH_TEAM2026_THANH_TOAN_YIYI/SRC
+            PATCH_TEAM2026_THANH_TOAN_YIYI/HUONG_DAN.txt
+          if-no-files-found: error
+          retention-days: 30
