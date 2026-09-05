@@ -1,0 +1,43 @@
+HOTFIX AUTOBANK TEAM2026 - COPY ĐÈ
+
+LỖI ĐÃ SỬA
+- Source cũ .env đang DB_NAME=awnv3 nên Test/Cron có thể kết nối nhầm database.
+- Configs.php mới: nếu DB_NAME rỗng hoặc đúng tên cũ awnv3 thì tự dùng team2026.
+- TestMBBank.php không còn query cash/danap; đổi sang vnd/tongnap đúng schema team2026.
+- MBBank.php giữ đúng cơ chế:
+  SePay -> cauberongyiyi<ID> -> account.id
+  -> history_bank
+  -> vnd += tiền nạp + 10%
+  -> tongnap += tiền thực nạp
+- Giao dịch dưới 10.000đ không xử lý.
+- Chống cộng trùng bằng history_bank.code.
+- sepay_callback.php cũ bị tắt để tránh cộng trùng/giả mạo.
+- KHÔNG chứa API key hoặc cron key trong patch.
+- CronMBBank.php HIỆN CÓ của bạn được giữ nguyên, bao gồm credentials của bạn.
+
+CÀI
+1. Backup htdocs.
+2. Copy thư mục htdocs trong patch đè vào C:\xampp\htdocs.
+3. KHÔNG xóa/ghi đè htdocs\Api\Bank\CronMBBank.php hiện có.
+4. Restart Apache.
+5. Mở TestMBBank.php bằng URL/key cũ:
+   - phải thấy Database: team2026
+   - cột VND / Tổng nạp
+6. Chạy CronMBBank.php bằng URL/key cũ.
+7. Refresh TestMBBank:
+   - history_bank -> ĐÃ XỬ LÝ
+   - VND tăng 110% số tiền nạp
+   - Tổng nạp tăng đúng tiền thực nạp
+8. Vào game / đăng nhập lại để session đọc số VND mới.
+
+FILE PATCH
+htdocs/Controllers/Configs.php
+htdocs/Api/Bank/MBBank.php
+htdocs/Api/Bank/TestMBBank.php
+htdocs/Api/Bank/sepay_callback.php
+
+KHÔNG ĐỤNG
+- CronMBBank.php hiện có
+- Payments.php
+- source game
+- NRO Manager Panel
