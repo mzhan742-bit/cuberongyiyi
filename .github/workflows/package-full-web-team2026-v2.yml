@@ -1,0 +1,69 @@
+name: Package Full YiYi Web Team2026 V2 Dynamic Autobank
+
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'full-web-team2026-v2/**'
+      - '.github/workflows/package-full-web-team2026-v2.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble
+        run: |
+          set -e
+          rm -rf full-v2
+          mkdir -p full-v2/htdocs/Controllers full-v2/htdocs/Pages full-v2/htdocs/Api/Bank full-v2/htdocs/Api
+
+          cp team2026-patch/htdocs/Controllers/Configs.php full-v2/htdocs/Controllers/Configs.php
+          cp team2026-patch/htdocs/Controllers/Team2026Compat.php full-v2/htdocs/Controllers/Team2026Compat.php
+          cp team2026-patch/htdocs/Controllers/Team2026CompatFix.php full-v2/htdocs/Controllers/Team2026CompatFix.php
+
+          cp full-web-team2026/htdocs/Controllers/Header.php full-v2/htdocs/Controllers/Header.php
+          cp web-clean-autobank/htdocs/Controllers/GameplayPostSeed.php full-v2/htdocs/Controllers/GameplayPostSeed.php
+          cp web-clean-autobank/htdocs/Forum.php full-v2/htdocs/Forum.php
+          cp web-clean-autobank/htdocs/Api/Post.php full-v2/htdocs/Api/Post.php
+          cp web-clean-autobank/htdocs/Pages/Giftcode.php full-v2/htdocs/Pages/Giftcode.php
+          cp web-clean-autobank/htdocs/Pages/Active.php full-v2/htdocs/Pages/Active.php
+          cp disable-card-topup/htdocs/Api/Card.php full-v2/htdocs/Api/Card.php
+
+          cp full-web-team2026-v2/htdocs/Controllers/AutobankConfig.php full-v2/htdocs/Controllers/AutobankConfig.php
+          cp full-web-team2026-v2/htdocs/Pages/Payments.php full-v2/htdocs/Pages/Payments.php
+          cp full-web-team2026-v2/htdocs/Api/Bank/sepay_callback.php full-v2/htdocs/Api/Bank/sepay_callback.php
+          cp full-web-team2026-v2/HUONG_DAN.txt full-v2/HUONG_DAN.txt
+
+      - name: PHP lint
+        run: |
+          find full-v2/htdocs -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Sanity
+        run: |
+          grep -q "AutobankConfig.php" full-v2/htdocs/Pages/Payments.php
+          grep -q "AUTOBANK_ACCOUNT_NUMBER" full-v2/htdocs/Controllers/AutobankConfig.php
+          grep -q "SEPAY_API_KEY" full-v2/htdocs/Controllers/AutobankConfig.php
+          grep -q "API key thật" full-v2/htdocs/Api/Bank/sepay_callback.php
+          ! grep -q "NGUYEN MINH TOAN" full-v2/htdocs/Pages/Payments.php
+          ! grep -q "0982542412" full-v2/htdocs/Pages/Payments.php
+          ! grep -q "2603b3626360f20f2440fddce90d0161" full-v2/htdocs/Api/Bank/sepay_callback.php
+          grep -q "Location: /Users/Payments" full-v2/htdocs/Pages/Active.php
+          grep -q "DELETE FROM comments WHERE post_id" full-v2/htdocs/Api/Post.php
+          grep -q "'status' => 'disabled'" full-v2/htdocs/Api/Card.php
+
+      - name: ZIP
+        run: |
+          cd full-v2
+          zip -r ../PATCH_FULL_WEB_YIYI_TEAM2026_V2_KHONG_GHI_DE_BANK_API.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_FULL_WEB_YIYI_TEAM2026_V2_KHONG_GHI_DE_BANK_API.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_FULL_WEB_YIYI_TEAM2026_V2_KHONG_GHI_DE_BANK_API
+          path: PATCH_FULL_WEB_YIYI_TEAM2026_V2_KHONG_GHI_DE_BANK_API.zip
+          retention-days: 7
+          if-no-files-found: error
