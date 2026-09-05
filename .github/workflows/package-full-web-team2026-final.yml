@@ -1,0 +1,151 @@
+name: Package Full YiYi Web Team2026 Final
+
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - '.github/workflows/package-full-web-team2026-final.yml'
+      - 'team2026-patch/**'
+      - 'web-clean-autobank/**'
+      - 'disable-card-topup/**'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble full patch
+        run: |
+          set -e
+          rm -rf full-final
+          mkdir -p full-final/htdocs/Controllers full-final/htdocs/Pages full-final/htdocs/Api
+
+          # Core compatibility: old web -> team2026
+          cp team2026-patch/htdocs/Controllers/Configs.php full-final/htdocs/Controllers/Configs.php
+          cp team2026-patch/htdocs/Controllers/Team2026Compat.php full-final/htdocs/Controllers/Team2026Compat.php
+          cp team2026-patch/htdocs/Controllers/Team2026CompatFix.php full-final/htdocs/Controllers/Team2026CompatFix.php
+
+          # Forum / Giftcode cleanup fixes
+          cp web-clean-autobank/htdocs/Forum.php full-final/htdocs/Forum.php
+          cp web-clean-autobank/htdocs/Api/Post.php full-final/htdocs/Api/Post.php
+          cp web-clean-autobank/htdocs/Pages/Giftcode.php full-final/htdocs/Pages/Giftcode.php
+          cp web-clean-autobank/htdocs/Pages/Active.php full-final/htdocs/Pages/Active.php
+          cp web-clean-autobank/htdocs/Controllers/GameplayPostSeed.php full-final/htdocs/Controllers/GameplayPostSeed.php
+
+          # Autobank only, disable card charging
+          cp disable-card-topup/htdocs/Pages/Payments.php full-final/htdocs/Pages/Payments.php
+          cp disable-card-topup/htdocs/Api/Card.php full-final/htdocs/Api/Card.php
+
+          # Header from the same old web source, only remove web-exchange button
+          # and change the payment caption to Autobank to avoid misleading UI.
+          curl -fsSL 'https://raw.githubusercontent.com/duymanh11tb/Src_Nro_Kayn/482b6b4f721c5e369c22cb060e1a6e4d4e4b8af3/htdocs/Controllers/Header.php' \
+            -o full-final/htdocs/Controllers/Header.php
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('full-final/htdocs/Controllers/Header.php')
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r'\s*<a[^>]+href="/Pages/Active\.php"[^>]*>Đổi thỏi vàng</a>\s*', '\n', s)
+          s = re.sub(
+              r'<span style="color:rgb\(209, 9, 50\);"><a href="#">Báo Lỗi SMS</a></span><br>\s*'
+              r'<span style="color:rgb\(209, 9, 50\);"><a href="#">Báo Lỗi thẻ</a></span>',
+              '<span style="color:rgb(209, 9, 50);"><a href="/Users/Payments">Chuyển khoản / Autobank</a></span>',
+              s
+          )
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          cat > full-final/HUONG_DAN_FULL.txt <<'EOF'
+          FULL PATCH WEB YIYI -> TEAM2026
+
+          DUNG KHI:
+          - Ban lo cai lai source web cu / chua sua API.
+          - Muon copy de mot lan de dua web ve dung trang thai da fix.
+
+          PATCH NAY TONG HOP:
+          1. Ket noi source web cu vao database team2026.
+          2. Tu bo sung schema compatibility cho account / forum / autobank.
+          3. Dang ky / dang nhap dung chung account team2026.
+          4. Forum dung posts va fix xoa bai co FK comments -> posts.
+          5. Xoa bai 'CO CHE GAMEPLAY - CAU BE RONG YIYI' cu va khong tu tao lai.
+          6. Fix trang Giftcode theo schema giftcode.detail cua team2026.
+          7. BO HOAN TOAN quy doi Thoi vang / Ngoc xanh tren web.
+          8. BO HOAN TOAN nap the cao tu dong.
+          9. /Api/Card bi khoa 403, khong goi API the cao nua.
+          10. CHI GIU chuyen khoan / QR / Autobank -> cong account.vnd.
+          11. Nguoi choi vao GAME tu quy doi VND theo gameplay.
+          12. Khong dong source game / NRO Manager Panel.
+
+          CAI DAT:
+          - BACKUP htdocs va database.
+          - Giai nen ZIP.
+          - Copy thu muc htdocs de vao source web cu.
+          - Chon Replace / Overwrite tat ca file trung.
+          - KHONG copy/de file Controllers/.env: patch khong co .env, nen thong tin DB cua may ban van duoc giu.
+          - Mo /Forum mot lan.
+          - Ctrl + F5.
+
+          KIEM TRA SAU KHI CAI:
+          - Dang ky tai khoan moi.
+          - Dang nhap.
+          - /Forum.
+          - Admin Dang Bai / Xoa Bai.
+          - /Users/Giftcode.
+          - /Users/Payments: chi con Chuyen khoan / Autobank.
+          - /Pages/Active.php: tu chuyen ve Payments.
+          - POST /Api/Card: bi chan 403.
+          - Autobank cong tien vao account.vnd.
+
+          LUU Y:
+          - Patch khong hoan lai cac giao dich test admin.
+          - Patch khong co SRC Java, khong thay Client.java / ServerManager.java.
+          - Neu source game cua ban dang co Panel thi patch nay khong anh huong Panel.
+          EOF
+
+      - name: PHP lint
+        run: |
+          set -e
+          for f in \
+            full-final/htdocs/Controllers/Configs.php \
+            full-final/htdocs/Controllers/Team2026Compat.php \
+            full-final/htdocs/Controllers/Team2026CompatFix.php \
+            full-final/htdocs/Controllers/Header.php \
+            full-final/htdocs/Controllers/GameplayPostSeed.php \
+            full-final/htdocs/Forum.php \
+            full-final/htdocs/Api/Post.php \
+            full-final/htdocs/Api/Card.php \
+            full-final/htdocs/Pages/Active.php \
+            full-final/htdocs/Pages/Giftcode.php \
+            full-final/htdocs/Pages/Payments.php; do
+            php -l "$f"
+          done
+
+      - name: Sanity checks
+        run: |
+          set -e
+          grep -q "'name' => 'team2026'" full-final/htdocs/Controllers/Configs.php
+          grep -q 'Team2026Compat.php' full-final/htdocs/Controllers/Configs.php
+          grep -q 'DELETE FROM comments WHERE post_id' full-final/htdocs/Api/Post.php
+          grep -q 'CƠ CHẾ GAMEPLAY%' full-final/htdocs/Forum.php
+          grep -q 'Location: /Users/Payments' full-final/htdocs/Pages/Active.php
+          grep -q 'CHUYỂN KHOẢN / AUTOBANK' full-final/htdocs/Pages/Payments.php
+          grep -q "'status' => 'disabled'" full-final/htdocs/Api/Card.php
+          ! grep -q 'curl_init' full-final/htdocs/Api/Card.php
+          ! grep -q '/Pages/Active.php.*Đổi thỏi vàng' full-final/htdocs/Controllers/Header.php
+
+      - name: Build ZIP
+        run: |
+          cd full-final
+          zip -r ../PATCH_FULL_WEB_YIYI_TEAM2026_COPY_DE_FINAL.zip htdocs HUONG_DAN_FULL.txt
+          cd ..
+          unzip -t PATCH_FULL_WEB_YIYI_TEAM2026_COPY_DE_FINAL.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_FULL_WEB_YIYI_TEAM2026_COPY_DE_FINAL
+          path: PATCH_FULL_WEB_YIYI_TEAM2026_COPY_DE_FINAL.zip
+          retention-days: 7
+          if-no-files-found: error
