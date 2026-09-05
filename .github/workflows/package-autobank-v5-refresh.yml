@@ -1,0 +1,37 @@
+name: Package YiYi Autobank V5 Refresh Worker
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'autobank-v5-refresh/**'
+      - '.github/workflows/package-autobank-v5-refresh.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint
+        run: |
+          php -l autobank-v5-refresh/htdocs/Api/Bank/MBBank.php
+          php -l autobank-v5-refresh/htdocs/Api/Bank/TestMBBank.php
+          php -l autobank-v5-refresh/htdocs/Api/Bank/AutoCronMBBankWorker.php
+      - name: Sanity
+        run: |
+          grep -q "fallback without q" autobank-v5-refresh/htdocs/Api/Bank/MBBank.php
+          grep -q "Tổng giao dịch API trả về" autobank-v5-refresh/htdocs/Api/Bank/TestMBBank.php
+          grep -q "autocron_worker.stop" autobank-v5-refresh/htdocs/Api/Bank/RESTART_AUTOBANK_AUTOCRON_V5.bat
+          ! grep -R -E "cron_[A-Za-z0-9_-]{8,}|OJLZWFQG" autobank-v5-refresh || true
+      - name: Build ZIP
+        run: |
+          cd autobank-v5-refresh
+          zip -r ../PATCH_YIYI_AUTOBANK_V5_REFRESH_WORKER.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_AUTOBANK_V5_REFRESH_WORKER.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_AUTOBANK_V5_REFRESH_WORKER
+          path: PATCH_YIYI_AUTOBANK_V5_REFRESH_WORKER.zip
+          retention-days: 7
+          if-no-files-found: error
