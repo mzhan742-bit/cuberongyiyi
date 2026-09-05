@@ -1,0 +1,31 @@
+HOTFIX AUTOBANK AUTOCRON V2 - FIX WINDOWS SCRIPT HOST
+
+LỖI V1
+- INSTALL_AUTOBANK_AUTOCRON.bat đã tạo file VBS bị sai dấu nháy.
+- Windows Script Host báo:
+  Unterminated string constant / 800A0409.
+- PHP worker và logic Autobank không phải nguyên nhân.
+
+V2
+- BỎ hoàn toàn VBS.
+- Xóa YIYI_Autobank_AutoCron.vbs cũ nếu còn.
+- Tạo Startup bằng file CMD + PowerShell hidden.
+- Worker vẫn chạy ẩn.
+- Vẫn quét SePay mỗi 10 giây.
+- Vẫn chỉ xử lý team2026.
+- Không ghi đè CronMBBank.php / API key.
+
+CÀI HOTFIX
+1. Copy htdocs trong ZIP đè C:\xampp\htdocs.
+2. Vào C:\xampp\htdocs\Api\Bank\
+3. Chạy INSTALL_AUTOBANK_AUTOCRON.bat.
+4. Lần này KHÔNG được hiện Windows Script Host.
+5. Chạy STATUS_AUTOBANK_AUTOCRON.bat.
+6. Nếu hiện [RUNNING] Worker dang chay là OK.
+7. Xem autocron_worker.log.
+
+Nếu V1 đã tạo VBS lỗi:
+- V2 tự xóa file đó, không cần xóa tay.
+
+Không cần restart Apache để worker CLI chạy,
+nhưng MySQL/XAMPP phải đang chạy.
