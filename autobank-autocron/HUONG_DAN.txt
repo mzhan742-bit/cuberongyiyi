@@ -1,0 +1,60 @@
+PATCH YIYI AUTOBANK AUTOCRON - 10 GIAY
+
+MỤC TIÊU
+- Không cần tự mở CronMBBank.php nữa.
+- Windows chạy worker PHP nền.
+- Mỗi 10 giây kiểm tra SePay và xử lý giao dịch mới.
+- Tự khởi động lại khi đăng nhập Windows.
+
+CƠ CHẾ
+SePay
+-> cauberongyiyi<ID>
+-> tìm account.id trong team2026
+-> INSERT history_bank
+-> account.vnd += tiền nạp + 10%
+-> account.tongnap += tiền thực nạp
+-> vào game tự quy đổi VND.
+
+AN TOÀN
+- Patch KHÔNG chứa API key.
+- Đọc API key từ CronMBBank.php hiện có của bạn.
+- Không ghi đè CronMBBank.php.
+- Worker bắt buộc xác nhận SELECT DATABASE() = team2026 trước khi xử lý.
+- Chống chạy 2 worker bằng lock file.
+- Chống cộng trùng tiếp tục dùng history_bank.code.
+- Giao dịch dưới 10.000đ không xử lý.
+- Khi API/MySQL lỗi, worker tự chờ 30 giây rồi thử lại.
+- Log chỉ ghi giao dịch mới/lỗi/heartbeat, không spam mỗi 10 giây.
+
+CÀI
+1. Giải nén ZIP.
+2. Copy thư mục htdocs đè vào C:\xampp\htdocs.
+3. Vào:
+   C:\xampp\htdocs\Api\Bank\
+4. Chạy:
+   INSTALL_AUTOBANK_AUTOCRON.bat
+5. Cửa sổ báo OK là xong.
+6. Có thể đóng cửa sổ; worker chạy ẩn.
+
+KIỂM TRA
+- Chạy STATUS_AUTOBANK_AUTOCRON.bat
+- Hoặc mở autocron_worker.log.
+- Dòng bình thường:
+  START: AutoCron Team2026...
+  HEARTBEAT: worker đang chạy, DB=team2026
+- Khi có tiền:
+  OK: đã xử lý 1 giao dịch mới
+
+DỪNG
+- Chạy STOP_AUTOBANK_AUTOCRON.bat.
+- File Startup cũng được gỡ.
+
+CHẠY LẠI
+- Chạy START_AUTOBANK_AUTOCRON.bat.
+
+LƯU Ý
+- MySQL/XAMPP phải chạy để cộng tiền.
+- Nếu Windows vừa boot mà MySQL chưa chạy, worker không chết:
+  nó tự retry sau 30 giây.
+- Không cần mở trình duyệt.
+- Không cần giữ trang Payments/TestMBBank mở.
