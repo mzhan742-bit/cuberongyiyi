@@ -1,0 +1,44 @@
+name: Package Full YiYi Web Team2026 Patch
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'full-web-team2026/**'
+      - '.github/workflows/package-full-web-team2026.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP lint
+        run: |
+          find full-web-team2026/htdocs -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Sanity checks
+        run: |
+          grep -q "'name' => 'team2026'" full-web-team2026/htdocs/Controllers/Configs.php
+          grep -q "Team2026Compat.php" full-web-team2026/htdocs/Controllers/Configs.php
+          grep -q "DELETE FROM comments WHERE post_id" full-web-team2026/htdocs/Api/Post.php
+          grep -q "status.*disabled" full-web-team2026/htdocs/Api/Card.php
+          ! grep -q "cardPaymentForm" full-web-team2026/htdocs/Pages/Payments.php
+          ! grep -q ">Đổi thỏi vàng<" full-web-team2026/htdocs/Controllers/Header.php
+          grep -q "detail" full-web-team2026/htdocs/Pages/Giftcode.php
+          grep -q "sepay" full-web-team2026/htdocs/Api/Bank/sepay_callback.php
+          grep -q "Location: /Users/Payments" full-web-team2026/htdocs/Pages/Active.php
+
+      - name: Build ZIP
+        run: |
+          cd full-web-team2026
+          zip -r ../PATCH_FULL_WEB_YIYI_TEAM2026_COPY_DE.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_FULL_WEB_YIYI_TEAM2026_COPY_DE.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_FULL_WEB_YIYI_TEAM2026_COPY_DE
+          path: PATCH_FULL_WEB_YIYI_TEAM2026_COPY_DE.zip
+          retention-days: 7
+          if-no-files-found: error
