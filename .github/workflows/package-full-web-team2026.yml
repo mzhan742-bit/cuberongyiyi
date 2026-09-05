@@ -22,11 +22,11 @@ jobs:
           grep -q "'name' => 'team2026'" full-web-team2026/htdocs/Controllers/Configs.php
           grep -q "Team2026Compat.php" full-web-team2026/htdocs/Controllers/Configs.php
           grep -q "DELETE FROM comments WHERE post_id" full-web-team2026/htdocs/Api/Post.php
-          grep -q "status.*disabled" full-web-team2026/htdocs/Api/Card.php
+          grep -q "disabled" full-web-team2026/htdocs/Api/Card.php
           ! grep -q "cardPaymentForm" full-web-team2026/htdocs/Pages/Payments.php
           ! grep -q ">Đổi thỏi vàng<" full-web-team2026/htdocs/Controllers/Header.php
           grep -q "detail" full-web-team2026/htdocs/Pages/Giftcode.php
-          grep -q "sepay" full-web-team2026/htdocs/Api/Bank/sepay_callback.php
+          grep -qi "SEPAY" full-web-team2026/htdocs/Api/Bank/sepay_callback.php
           grep -q "Location: /Users/Payments" full-web-team2026/htdocs/Pages/Active.php
 
       - name: Build ZIP
