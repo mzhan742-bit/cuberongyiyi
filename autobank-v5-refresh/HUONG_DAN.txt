@@ -1,0 +1,40 @@
+HOTFIX V5 - WORKER RUNNING NHUNG TEST VAN 0
+
+Ảnh hiện tại cho thấy:
+- Worker AutoCron đang RUNNING.
+- DB = team2026.
+- Nhưng TestMBBank vẫn là bản CŨ:
+  + chưa có dòng "Tổng giao dịch API trả về"
+  + vẫn ghi "Muốn xử lý giao dịch hãy chạy CronMBBank.php."
+=> V4 MBBank.php/TestMBBank.php chưa được web dùng, hoặc worker vẫn giữ class MBBank cũ trong RAM.
+
+V5 làm 2 việc:
+1) Copy MBBank.php + TestMBBank.php V4:
+   - nếu q=cauberongyiyi trả 0 -> tự fallback bỏ q
+   - lọc cauberongyiyi bằng PHP
+   - Test hiển thị Tổng giao dịch API trả về.
+2) RESTART worker bắt buộc:
+   - PHP CLI require_once MBBank.php khi worker khởi động.
+   - Nếu chỉ chép file mới mà không restart worker, worker vẫn chạy code cũ trong RAM.
+
+CÀI:
+1. Copy htdocs trong patch đè C:\xampp\htdocs.
+2. Vào C:\xampp\htdocs\Api\Bank\
+3. Chạy RESTART_AUTOBANK_AUTOCRON_V5.bat
+4. Chạy STATUS_AUTOBANK_AUTOCRON.bat -> phải RUNNING.
+5. Refresh TestMBBank.php bằng Ctrl+F5.
+
+DẤU HIỆU ĐÚNG:
+TestMBBank phải hiện:
+- Database: team2026
+- API OK
+- Tổng giao dịch API trả về: X
+- Giao dịch phù hợp: Y
+
+Nếu X > 0 và Y > 0:
+- worker sẽ xử lý giao dịch hợp lệ mỗi 10 giây.
+- history_bank chuyển ĐÃ XỬ LÝ.
+- VND +10%.
+- Tổng nạp + tiền thực.
+
+Patch KHÔNG chứa API key / cron key và KHÔNG ghi đè CronMBBank.php.
