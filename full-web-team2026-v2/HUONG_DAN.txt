@@ -1,0 +1,51 @@
+FULL PATCH WEB YIYI -> TEAM2026 - V2 KHONG NHUNG TAI KHOAN / API KEY MAU
+
+MUC TIEU:
+- Khôi phục web sau khi lỡ copy source web cũ.
+- Không ghi đè thông tin ngân hàng thật bằng số tài khoản/key mẫu.
+- Chỉ giữ Autobank -> cộng VND -> vào game quy đổi.
+
+QUAN TRONG:
+- PATCH KHONG CO file Controllers/.env.
+- PATCH KHONG hard-code số tài khoản ngân hàng.
+- PATCH KHONG hard-code API key Autobank.
+- Payments.php lấy cấu hình thật từ .env trước, rồi mới fallback bảng settings.
+- Nếu cấu hình đang là dữ liệu mẫu như 1/0/# thì trang KHÔNG dựng QR sai, mà báo thiếu cấu hình.
+- sepay_callback.php chỉ chạy khi có API key thật trong .env.
+- Các file CronMBBank.php / CronAcb.php / auto-load-api.php hiện có của bạn KHÔNG bị patch này ghi đè.
+
+BIEN .ENV DUOC HO TRO:
+AUTOBANK_ACCOUNT_NUMBER=
+AUTOBANK_ACCOUNT_NAME=
+AUTOBANK_BANK_CODE=MB
+AUTOBANK_BANK_NAME=MB Bank
+AUTOBANK_MEMO_PREFIX=ngocrongluaga
+AUTOBANK_BONUS_PERCENT=10
+AUTOBANK_MIN_AMOUNT=10000
+AUTOBANK_API_KEY=
+
+Cũng nhận các tên tương thích:
+BANK_ACCOUNT_NUMBER, BANK_ACCOUNT_NAME, BANK_CODE,
+SEPAY_ACCOUNT_NUMBER, SEPAY_ACCOUNT_NAME, SEPAY_BANK_CODE, SEPAY_API_KEY,
+MBBANK_ACCOUNT_NUMBER, MBBANK_API_KEY, API_KEY_MBBANK, BANK_API_KEY.
+
+CAI DAT:
+1. Backup htdocs + database.
+2. GIU NGUYEN Controllers/.env hien tai cua ban.
+3. Copy htdocs trong ZIP đè vào source web hiện tại.
+4. Replace file trùng.
+5. Mở /Users/Payments.
+6. Nếu thông tin ngân hàng thật đã có trong .env/settings thì QR sẽ lấy đúng.
+7. Nếu báo thiếu cấu hình, chỉ cần điền biến .env tương ứng - không sửa code.
+
+GOM CAC FIX TRUOC:
+- Database team2026 compatibility.
+- Đăng ký / đăng nhập.
+- Forum posts.
+- Fix xóa bài FK comments -> posts.
+- Xóa bài gameplay patch cũ.
+- Giftcode.detail.
+- Tắt quy đổi web.
+- Tắt nạp thẻ cào + /Api/Card 403.
+- Autobank cộng account.vnd.
+- Không đụng SRC game / NRO Manager Panel.
