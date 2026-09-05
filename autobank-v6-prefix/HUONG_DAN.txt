@@ -1,0 +1,38 @@
+V6 - FIX PREFIX GIAO DICH THUC TE
+
+TỪ ẢNH SEPAY:
+- Giao dịch thật 15.000đ có nội dung:
+  QR - lycafethu3732
+- Trong khi source web cũ đang lọc:
+  cauberongyiyi3732
+
+ĐÂY LÀ NGUYÊN NHÂN CHÍNH KHIẾN TEST = 0.
+
+V6:
+1) Bỏ q-filter khỏi request SePay.
+2) Lấy 100 giao dịch incoming OCB gần nhất.
+3) Chấp nhận CẢ HAI prefix:
+   - lycafethu<ID>
+   - cauberongyiyi<ID>
+4) Payments đổi memo mới thành lycafethu<ID> để đồng bộ với giao dịch thực tế.
+5) Giao dịch cũ cauberongyiyi vẫn nhận được.
+6) AutoCron giữ nguyên chu kỳ 10 giây.
+7) 15.000đ hợp lệ:
+   - VND +16.500
+   - Tổng nạp +15.000
+   - history_bank ghi code SePay
+8) Chống cộng trùng theo history_bank.code.
+
+CÀI:
+- Copy htdocs đè C:\xampp\htdocs
+- Vào C:\xampp\htdocs\Api\Bank
+- Chạy RESTART_AUTOBANK_V6.bat
+- Ctrl+F5 TestMBBank.php
+
+DẤU HIỆU ĐÚNG:
+TEST SEPAY AUTOBANK - TEAM2026 V6
+Prefix chấp nhận: lycafethu + cauberongyiyi
+Tổng giao dịch API trả về: > 0
+Giao dịch phù hợp: > 0
+
+Không ghi đè CronMBBank.php/API key.
