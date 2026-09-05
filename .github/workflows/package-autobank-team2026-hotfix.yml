@@ -1,0 +1,46 @@
+name: Package Autobank Team2026 Hotfix
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'autobank-team2026-hotfix/**'
+      - '.github/workflows/package-autobank-team2026-hotfix.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP lint
+        run: |
+          php -l autobank-team2026-hotfix/htdocs/Controllers/Configs.php
+          php -l autobank-team2026-hotfix/htdocs/Api/Bank/MBBank.php
+          php -l autobank-team2026-hotfix/htdocs/Api/Bank/TestMBBank.php
+          php -l autobank-team2026-hotfix/htdocs/Api/Bank/sepay_callback.php
+
+      - name: Sanity
+        run: |
+          grep -q "strtolower(\$dbName) === 'awnv3'" autobank-team2026-hotfix/htdocs/Controllers/Configs.php
+          grep -q "team2026" autobank-team2026-hotfix/htdocs/Controllers/Configs.php
+          grep -q "SELECT id, username, vnd, tongnap" autobank-team2026-hotfix/htdocs/Api/Bank/TestMBBank.php
+          ! grep -q "SELECT id, username, cash, danap" autobank-team2026-hotfix/htdocs/Api/Bank/TestMBBank.php
+          grep -q "amount < 10000" autobank-team2026-hotfix/htdocs/Api/Bank/MBBank.php
+          grep -q "vnd = COALESCE(vnd, 0)" autobank-team2026-hotfix/htdocs/Api/Bank/MBBank.php
+          grep -q "tongnap = COALESCE(tongnap, 0)" autobank-team2026-hotfix/htdocs/Api/Bank/MBBank.php
+          ! grep -R -E "OJLZWFQG|cron_[A-Za-z0-9_-]{8,}" autobank-team2026-hotfix || true
+
+      - name: Build ZIP
+        run: |
+          cd autobank-team2026-hotfix
+          zip -r ../PATCH_YIYI_AUTOBANK_TEAM2026_FIX_VND.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_AUTOBANK_TEAM2026_FIX_VND.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_AUTOBANK_TEAM2026_FIX_VND
+          path: PATCH_YIYI_AUTOBANK_TEAM2026_FIX_VND.zip
+          retention-days: 7
+          if-no-files-found: error
