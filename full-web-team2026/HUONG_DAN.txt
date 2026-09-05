@@ -1,0 +1,67 @@
+PATCH FULL WEB YIYI -> TEAM2026
+BẢN TỔNG HỢP SAU KHI LỠ COPY SOURCE WEB CŨ
+
+MỤC TIÊU:
+- Copy đè 1 lần để đưa source web cũ về trạng thái đã sửa.
+- Không cần import compatibility SQL thủ công.
+- Không đụng source game / NRO Manager Panel.
+
+BAO GỒM:
+1. Kết nối source web với database team2026
+   - đăng ký / đăng nhập
+   - account schema compatibility
+   - forum schema compatibility
+   - payments / autobank compatibility
+   - vp_bank và các bảng web phụ trợ
+   - đồng bộ vnd <-> sotien, tongnap <-> danap
+
+2. Autobank
+   - giữ Chuyển khoản / QR / SePay
+   - Autobank cộng VND vào account
+   - quy đổi VND thực hiện trong game
+
+3. Tắt hoàn toàn nạp thẻ cào tự động
+   - không còn form thẻ cào ở Payments
+   - POST /Api/Card trả 403
+   - không gửi serial/mã thẻ tới cổng thẻ
+
+4. Bỏ quy đổi trên web
+   - bỏ nút Đổi thỏi vàng khỏi Header
+   - /Pages/Active.php chuyển về /Users/Payments
+   - không có queue đổi web
+
+5. Forum
+   - xóa bài CƠ CHẾ GAMEPLAY do patch cũ tạo
+   - không tự tạo lại
+   - fix lỗi xóa bài do FK comments.post_id -> posts.id
+   - giữ đăng/sửa/xóa bài admin
+
+6. Giftcode
+   - fix lỗi Unknown column 'item'
+   - tương thích giftcode.detail của team2026
+   - hiển thị vật phẩm / số lượng / lượt còn
+
+CÁCH CÀI:
+1. Backup htdocs và database.
+2. KHÔNG copy .env từ patch (patch không có .env).
+3. Giải nén ZIP.
+4. Copy thư mục htdocs đè lên source web hiện tại.
+5. Chọn Replace/Overwrite.
+6. Mở website 1 lần, sau đó mở /Forum 1 lần.
+7. Ctrl+F5.
+
+KIỂM TRA:
+- Đăng ký tài khoản mới.
+- Đăng nhập.
+- /Users/Payments chỉ còn Chuyển khoản / Autobank.
+- /Api/Card không còn nhận thẻ cào.
+- Autobank cộng số dư VND.
+- /Forum hiển thị bình thường.
+- Admin xóa bài không còn lỗi FK.
+- /Users/Giftcode không còn lỗi cột item.
+- Quy đổi VND thực hiện trong game.
+
+LƯU Ý:
+- Giữ file htdocs/Controllers/.env hiện tại của máy bạn.
+- Configs.php dùng DB host/user/pass từ .env và database team2026.
+- Không bao gồm source game, nên không làm mất Panel.
