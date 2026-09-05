@@ -1,0 +1,32 @@
+HOTFIX SEPAY 0 GIAO DICH PHU HOP
+
+TRIỆU CHỨNG
+- TestMBBank báo API OK.
+- Database team2026 đúng.
+- Nhưng "Giao dịch phù hợp: 0".
+- Trước đó cùng tài khoản/API đã thấy 13 giao dịch.
+
+NGUYÊN NHÂN ĐƯỢC XỬ LÝ
+- SePay q-filter có thể trả success nhưng data rỗng.
+- Source cũ đang phụ thuộc hoàn toàn vào:
+  q=cauberongyiyi
+
+V4
+1. Vẫn thử q=cauberongyiyi trước.
+2. Nếu API trả 0 dòng:
+   - tự gọi lại SePay KHÔNG dùng q.
+   - lấy 100 giao dịch incoming OCB gần nhất.
+   - lọc cauberongyiyi ở PHP.
+3. Test hiển thị thêm "Tổng giao dịch API trả về".
+4. AutoCron/CronMBBank dùng chung MBBank.php nên tự hưởng hotfix.
+5. Không đổi API key / cron key.
+6. Không đụng database schema.
+
+CÀI
+- Copy htdocs đè C:\xampp\htdocs.
+- Không cần cài lại AutoCron.
+- Refresh TestMBBank.php.
+- Nếu dòng Tổng giao dịch API > 0 và Giao dịch phù hợp > 0 là đã bắt lại được giao dịch.
+
+Nếu AutoCron đang chạy:
+- Worker sẽ tự dùng MBBank.php mới ở vòng tiếp theo.
