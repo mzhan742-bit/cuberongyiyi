@@ -1,0 +1,40 @@
+name: Package YiYi Autobank AutoCron
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'autobank-autocron/**'
+      - '.github/workflows/package-autobank-autocron.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP lint
+        run: php -l autobank-autocron/htdocs/Api/Bank/AutoCronMBBankWorker.php
+
+      - name: Sanity
+        run: |
+          grep -q "YIYI_AUTOCRON_INTERVAL = 10" autobank-autocron/htdocs/Api/Bank/AutoCronMBBankWorker.php
+          grep -q "SELECT DATABASE()" autobank-autocron/htdocs/Api/Bank/AutoCronMBBankWorker.php
+          grep -q "team2026" autobank-autocron/htdocs/Api/Bank/AutoCronMBBankWorker.php
+          grep -q "CronMBBank.php" autobank-autocron/htdocs/Api/Bank/AutoCronMBBankWorker.php
+          grep -q "LOCK_EX.*LOCK_NB" autobank-autocron/htdocs/Api/Bank/AutoCronMBBankWorker.php
+          ! grep -R -E "OJLZWFQG|cron_[A-Za-z0-9_-]{8,}" autobank-autocron || true
+
+      - name: Build ZIP
+        run: |
+          cd autobank-autocron
+          zip -r ../PATCH_YIYI_AUTOBANK_AUTOCRON_10S.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_AUTOBANK_AUTOCRON_10S.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_AUTOBANK_AUTOCRON_10S
+          path: PATCH_YIYI_AUTOBANK_AUTOCRON_10S.zip
+          retention-days: 7
+          if-no-files-found: error
