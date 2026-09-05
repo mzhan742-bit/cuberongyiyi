@@ -1,0 +1,44 @@
+name: Package YiYi Autobank AutoCron V2 Fix Startup
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'autobank-autocron-v2/**'
+      - '.github/workflows/package-autobank-autocron-v2.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble
+        run: |
+          mkdir -p autobank-autocron-v2/htdocs/Api/Bank
+          cp autobank-autocron/htdocs/Api/Bank/AutoCronMBBankWorker.php autobank-autocron-v2/htdocs/Api/Bank/AutoCronMBBankWorker.php
+
+      - name: PHP lint
+        run: php -l autobank-autocron-v2/htdocs/Api/Bank/AutoCronMBBankWorker.php
+
+      - name: Sanity
+        run: |
+          grep -q "YIYI_Autobank_AutoCron.cmd" autobank-autocron-v2/htdocs/Api/Bank/INSTALL_AUTOBANK_AUTOCRON.bat
+          grep -q "powershell.exe" autobank-autocron-v2/htdocs/Api/Bank/INSTALL_AUTOBANK_AUTOCRON.bat
+          grep -q "OLDVBS" autobank-autocron-v2/htdocs/Api/Bank/INSTALL_AUTOBANK_AUTOCRON.bat
+          ! grep -q "wscript.exe" autobank-autocron-v2/htdocs/Api/Bank/INSTALL_AUTOBANK_AUTOCRON.bat
+          grep -q "AutoCronMBBankWorker.php" autobank-autocron-v2/htdocs/Api/Bank/STATUS_AUTOBANK_AUTOCRON.bat
+
+      - name: Build ZIP
+        run: |
+          cd autobank-autocron-v2
+          zip -r ../PATCH_YIYI_AUTOBANK_AUTOCRON_10S_V2_FIX_STARTUP.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_AUTOBANK_AUTOCRON_10S_V2_FIX_STARTUP.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_AUTOBANK_AUTOCRON_10S_V2_FIX_STARTUP
+          path: PATCH_YIYI_AUTOBANK_AUTOCRON_10S_V2_FIX_STARTUP.zip
+          retention-days: 7
+          if-no-files-found: error
