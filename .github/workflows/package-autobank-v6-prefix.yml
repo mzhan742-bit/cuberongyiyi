@@ -1,0 +1,40 @@
+name: Package YiYi Autobank V6 Prefix Fix
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'autobank-v6-prefix/**'
+      - '.github/workflows/package-autobank-v6-prefix.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint
+        run: |
+          php -l autobank-v6-prefix/htdocs/Api/Bank/MBBank.php
+          php -l autobank-v6-prefix/htdocs/Api/Bank/TestMBBank.php
+          php -l autobank-v6-prefix/htdocs/Api/Bank/AutoCronMBBankWorker.php
+          php -l autobank-v6-prefix/htdocs/Pages/Payments.php
+      - name: Sanity
+        run: |
+          grep -q "lycafethu" autobank-v6-prefix/htdocs/Api/Bank/MBBank.php
+          grep -q "cauberongyiyi" autobank-v6-prefix/htdocs/Api/Bank/MBBank.php
+          grep -q "Prefix chấp nhận" autobank-v6-prefix/htdocs/Api/Bank/TestMBBank.php
+          grep -q "MEMO_PREFIX = 'lycafethu'" autobank-v6-prefix/htdocs/Pages/Payments.php
+          ! grep -q "&q=" autobank-v6-prefix/htdocs/Api/Bank/MBBank.php
+          ! grep -R -E "cron_[A-Za-z0-9_-]{8,}|OJLZWFQG" autobank-v6-prefix || true
+      - name: Build ZIP
+        run: |
+          cd autobank-v6-prefix
+          zip -r ../PATCH_YIYI_AUTOBANK_V6_FIX_LYCAFETHU.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_AUTOBANK_V6_FIX_LYCAFETHU.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_AUTOBANK_V6_FIX_LYCAFETHU
+          path: PATCH_YIYI_AUTOBANK_V6_FIX_LYCAFETHU.zip
+          retention-days: 7
+          if-no-files-found: error
