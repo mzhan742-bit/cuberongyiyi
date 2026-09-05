@@ -1,0 +1,40 @@
+name: Package SePay Zero Match Hotfix
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'sepay-zero-match-hotfix/**'
+      - '.github/workflows/package-sepay-zero-match-hotfix.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP lint
+        run: |
+          php -l sepay-zero-match-hotfix/htdocs/Api/Bank/MBBank.php
+          php -l sepay-zero-match-hotfix/htdocs/Api/Bank/TestMBBank.php
+
+      - name: Sanity
+        run: |
+          grep -q "fallback without q" sepay-zero-match-hotfix/htdocs/Api/Bank/MBBank.php
+          grep -q "requestSePay" sepay-zero-match-hotfix/htdocs/Api/Bank/MBBank.php
+          grep -q "Tổng giao dịch API trả về" sepay-zero-match-hotfix/htdocs/Api/Bank/TestMBBank.php
+          ! grep -R -E "OJLZWFQG|cron_[A-Za-z0-9_-]{8,}" sepay-zero-match-hotfix || true
+
+      - name: Build ZIP
+        run: |
+          cd sepay-zero-match-hotfix
+          zip -r ../PATCH_YIYI_SEPAY_FIX_0_GIAO_DICH_V4.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_SEPAY_FIX_0_GIAO_DICH_V4.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_SEPAY_FIX_0_GIAO_DICH_V4
+          path: PATCH_YIYI_SEPAY_FIX_0_GIAO_DICH_V4.zip
+          retention-days: 7
+          if-no-files-found: error
