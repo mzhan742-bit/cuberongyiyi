@@ -1,0 +1,44 @@
+PATCH FIX TOP NHIỆM VỤ - TEAM2026
+
+LỖI:
+SQLSTATE[42S22]: Unknown column 'idmain' in 'order clause'
+
+NGUYÊN NHÂN:
+Source web cũ dùng:
+  ORDER BY idmain ASC
+
+Nhưng bảng task_sub_template trong database team2026 KHÔNG có cột idmain.
+Schema team2026 có:
+  task_main_id
+  NAME
+  max_count
+  notify
+  npc_id
+  map
+  ducvupro
+
+Trong đó ducvupro là AUTO_INCREMENT và giữ đúng thứ tự các nhiệm vụ phụ.
+
+ĐÃ SỬA:
+  ORDER BY idmain ASC
+thành:
+  ORDER BY ducvupro ASC
+
+Kèm escape tên nhân vật khi render.
+
+CÀI:
+1. Giải nén ZIP.
+2. Copy htdocs đè vào C:\xampp\htdocs.
+3. Replace file trùng.
+4. Ctrl + F5 trang Bảng Xếp Hạng.
+
+PATCH CHỈ ĐỤNG:
+  htdocs/Pages/Disconnect.php
+
+KHÔNG ĐỤNG:
+- Autobank
+- Payments
+- Forum
+- Giftcode
+- Source game
+- NRO Manager Panel
