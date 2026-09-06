@@ -1,0 +1,32 @@
+name: Package Fix Task Ranking Team2026
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'fix-task-ranking/**'
+      - '.github/workflows/package-fix-task-ranking.yml'
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint
+        run: php -l fix-task-ranking/htdocs/Pages/Disconnect.php
+      - name: Sanity
+        run: |
+          grep -q "ORDER BY ducvupro ASC" fix-task-ranking/htdocs/Pages/Disconnect.php
+          ! grep -q "ORDER BY idmain ASC" fix-task-ranking/htdocs/Pages/Disconnect.php
+          grep -q "TOP NHIỆM VỤ" fix-task-ranking/htdocs/Pages/Disconnect.php
+      - name: Build ZIP
+        run: |
+          cd fix-task-ranking
+          zip -r ../PATCH_YIYI_FIX_TOP_NHIEM_VU_TEAM2026.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_FIX_TOP_NHIEM_VU_TEAM2026.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_FIX_TOP_NHIEM_VU_TEAM2026
+          path: PATCH_YIYI_FIX_TOP_NHIEM_VU_TEAM2026.zip
+          retention-days: 7
+          if-no-files-found: error
