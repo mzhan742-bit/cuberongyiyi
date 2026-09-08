@@ -1,0 +1,201 @@
+name: Build IOS2 Direct Unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/IOS2_BUILD_TRIGGER"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build IOS2 Unsigned IPA
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download IOS2 source parts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/input"
+
+          curl -L --fail --retry 5 --retry-delay 3             "https://drive.usercontent.google.com/download?id=1n_XMNUVgGxsf-FH90w63KCZV3XFg9ma-&export=download&confirm=t"             -o "$GITHUB_WORKSPACE/input/IOS2.part00"
+
+          curl -L --fail --retry 5 --retry-delay 3             "https://drive.usercontent.google.com/download?id=1cbhNfiqGyO6xBLGcQ3g1kWpEfu6WpIYA&export=download&confirm=t"             -o "$GITHUB_WORKSPACE/input/IOS2.part01"
+
+          curl -L --fail --retry 5 --retry-delay 3             "https://drive.usercontent.google.com/download?id=1EEFoe6r3BOtF7uIbOv9-kIS4D7extaOX&export=download&confirm=t"             -o "$GITHUB_WORKSPACE/input/IOS2.part02"
+
+          echo "Downloaded parts:"
+          ls -lh "$GITHUB_WORKSPACE/input"
+
+          echo "2422a5d46963cb013182694034c51d7e3ecaa692f089ebd028cfe4041d6d91ce  $GITHUB_WORKSPACE/input/IOS2.part00" | shasum -a 256 -c -
+          echo "7c5fe1079d4fee7591d2e4570c0278ef3942cf3b8ad4a1b9e2d395a20038b61c  $GITHUB_WORKSPACE/input/IOS2.part01" | shasum -a 256 -c -
+          echo "24b7e95e942b9de4553435358239e9770b66bb69b329237e3f539722b07f9e46  $GITHUB_WORKSPACE/input/IOS2.part02" | shasum -a 256 -c -
+
+      - name: Reassemble exact IOS2 RAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat "$GITHUB_WORKSPACE/input/IOS2.part00"               "$GITHUB_WORKSPACE/input/IOS2.part01"               "$GITHUB_WORKSPACE/input/IOS2.part02"               > "$GITHUB_WORKSPACE/IOS2.rar"
+
+          echo "bd8b67397f6aa336c256e01167576f1844fe878fefaee51f281f5065c0baf8e9  $GITHUB_WORKSPACE/IOS2.rar" | shasum -a 256 -c -
+          ls -lh "$GITHUB_WORKSPACE/IOS2.rar"
+
+      - name: Install RAR extractor
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v unar >/dev/null 2>&1; then
+            brew install unar
+          fi
+          unar -v || true
+
+      - name: Extract IOS2 Xcode project
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$GITHUB_WORKSPACE/xcode-source"
+          mkdir -p "$GITHUB_WORKSPACE/xcode-source"
+          unar -f -o "$GITHUB_WORKSPACE/xcode-source" "$GITHUB_WORKSPACE/IOS2.rar"
+
+          PROJECT_PATH=$(find "$GITHUB_WORKSPACE/xcode-source" -type d -name "Unity-iPhone.xcodeproj" | head -1)
+          if [ -z "$PROJECT_PATH" ]; then
+            echo "ERROR: Unity-iPhone.xcodeproj not found"
+            find "$GITHUB_WORKSPACE/xcode-source" -maxdepth 5 -print | head -300
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$PROJECT_PATH")
+          echo "PROJECT_PATH=$PROJECT_PATH" >> "$GITHUB_ENV"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Found project: $PROJECT_PATH"
+
+      - name: Show Xcode version
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Install CocoaPods if needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          if [ -f Podfile ]; then
+            if ! command -v pod >/dev/null 2>&1; then
+              sudo gem install cocoapods
+            fi
+            pod install
+          else
+            echo "No Podfile"
+          fi
+
+      - name: Detect workspace or project
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKSPACE=$(find "$PROJECT_DIR" -maxdepth 1 -type d -name "*.xcworkspace" | head -1)
+          if [ -n "$WORKSPACE" ]; then
+            echo "XCODE_TYPE=workspace" >> "$GITHUB_ENV"
+            echo "XCODE_PATH=$WORKSPACE" >> "$GITHUB_ENV"
+            xcodebuild -workspace "$WORKSPACE" -list
+          else
+            echo "XCODE_TYPE=project" >> "$GITHUB_ENV"
+            echo "XCODE_PATH=$PROJECT_PATH" >> "$GITHUB_ENV"
+            xcodebuild -project "$PROJECT_PATH" -list
+          fi
+
+      - name: Build unsigned Unity iOS app
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf "$GITHUB_WORKSPACE/build"
+          mkdir -p "$GITHUB_WORKSPACE/build"
+
+          COMMON_ARGS=(
+            -scheme Unity-iPhone
+            -configuration Release
+            -sdk iphoneos
+            -destination "generic/platform=iOS"
+            -derivedDataPath "$GITHUB_WORKSPACE/build"
+            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGN_IDENTITY=
+            DEVELOPMENT_TEAM=
+            build
+          )
+
+          if [ "$XCODE_TYPE" = "workspace" ]; then
+            xcodebuild -workspace "$XCODE_PATH" "${COMMON_ARGS[@]}" 2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
+          else
+            xcodebuild -project "$XCODE_PATH" "${COMMON_ARGS[@]}" 2>&1 | tee "$GITHUB_WORKSPACE/xcodebuild.log"
+          fi
+
+      - name: Find and sanitize built app
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find "$GITHUB_WORKSPACE/build/Build/Products" -type d -name "*.app" | grep "Release-iphoneos" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: built .app not found"
+            find "$GITHUB_WORKSPACE/build" -maxdepth 6 -print | head -400
+            exit 1
+          fi
+
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+          echo "Built app: $APP_PATH"
+
+          # Ensure final package is completely unsigned.
+          find "$APP_PATH" -type d -name "_CodeSignature" -print0 | while IFS= read -r -d '' d; do rm -rf "$d"; done
+          find "$APP_PATH" -name "embedded.mobileprovision" -type f -delete || true
+
+          echo "Info.plist:"
+          plutil -p "$APP_PATH/Info.plist" | head -100 || true
+
+      - name: Package standard unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$GITHUB_WORKSPACE/ipa-output"
+          mkdir -p "$GITHUB_WORKSPACE/ipa-output/Payload"
+          cp -R "$APP_PATH" "$GITHUB_WORKSPACE/ipa-output/Payload/"
+
+          cd "$GITHUB_WORKSPACE/ipa-output"
+          /usr/bin/zip -qry "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned-IOS2.ipa" Payload
+
+          unzip -Z1 "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned-IOS2.ipa" | grep -Eq '^Payload/[^/]+\.app/' || {
+            echo "ERROR: invalid IPA structure"
+            exit 1
+          }
+
+          if unzip -Z1 "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned-IOS2.ipa" | grep -Eq '(^|/)_CodeSignature/|embedded\.mobileprovision$'; then
+            echo "ERROR: signing material still present"
+            exit 1
+          fi
+
+          echo "IPA structure OK and unsigned"
+          ls -lh "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned-IOS2.ipa"
+          shasum -a 256 "$GITHUB_WORKSPACE/CauBeRongYiYi-unsigned-IOS2.ipa"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CauBeRongYiYi-Unsigned-IOS2
+          path: CauBeRongYiYi-unsigned-IOS2.ipa
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Xcode build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xcode-Build-Log-IOS2
+          path: xcodebuild.log
+          if-no-files-found: ignore
+          retention-days: 7
