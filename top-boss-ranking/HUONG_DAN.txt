@@ -1,0 +1,31 @@
+PATCH THÊM TOP SĂN BOSS - WEB YIYI / TEAM2026
+
+ĐÃ THÊM:
+- Bảng "TOP SĂN BOSS" vào trang Bảng Xếp Hạng.
+- Top 15 nhân vật có số lần kết liễu Boss cao nhất.
+- Cột:
+  TOP | Tên nhân vật | Boss đã hạ
+- Có tổng số Boss đã hạ toàn server.
+
+CƠ CHẾ ĐỌC DỮ LIỆU:
+- Dùng player.data_achievement đang có sẵn trong source game.
+- Achievement index 19 = TRUM_KET_LIEU_BOSS.
+- Source game tăng achievement này mỗi lần checkDoneTaskKillBoss().
+- Không cần thêm bảng SQL.
+- Không cần sửa source game.
+- Không làm ảnh hưởng Autobank.
+
+THỨ TỰ BẢNG:
+1. Top Nạp
+2. Top Sức Mạnh
+3. Top Săn Boss
+4. Top Nhiệm Vụ
+
+CÀI:
+1. Backup htdocs/Pages/Disconnect.php hiện tại.
+2. Copy thư mục htdocs trong patch đè vào C:\xampp\htdocs.
+3. Replace file trùng.
+4. Ctrl + F5 trang Bảng Xếp Hạng.
+
+PATCH CHỈ ĐỤNG:
+htdocs/Pages/Disconnect.php
