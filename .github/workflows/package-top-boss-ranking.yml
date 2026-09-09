@@ -1,0 +1,34 @@
+name: Package YiYi Top Boss Ranking
+on:
+  push:
+    branches: [team2026-web-patch]
+    paths:
+      - 'top-boss-ranking/**'
+      - '.github/workflows/package-top-boss-ranking.yml'
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint
+        run: php -l top-boss-ranking/htdocs/Pages/Disconnect.php
+      - name: Sanity
+        run: |
+          grep -q "TOP SĂN BOSS" top-boss-ranking/htdocs/Pages/Disconnect.php
+          grep -q "data_achievement" top-boss-ranking/htdocs/Pages/Disconnect.php
+          grep -q "array_key_exists(19" top-boss-ranking/htdocs/Pages/Disconnect.php
+          grep -q "ORDER BY ducvupro ASC" top-boss-ranking/htdocs/Pages/Disconnect.php
+          grep -q "Tổng Boss đã hạ toàn server" top-boss-ranking/htdocs/Pages/Disconnect.php
+      - name: Build ZIP
+        run: |
+          cd top-boss-ranking
+          zip -r ../PATCH_YIYI_THEM_TOP_SAN_BOSS_TEAM2026.zip htdocs HUONG_DAN.txt
+          cd ..
+          unzip -t PATCH_YIYI_THEM_TOP_SAN_BOSS_TEAM2026.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PATCH_YIYI_THEM_TOP_SAN_BOSS_TEAM2026
+          path: PATCH_YIYI_THEM_TOP_SAN_BOSS_TEAM2026.zip
+          retention-days: 7
+          if-no-files-found: error
